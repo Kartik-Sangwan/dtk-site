@@ -1,0 +1,160 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String?
+  email     String?  @unique
+  image     String?
+  role      UserRole @default(CUSTOMER)
+  passwordHash String?
+  emailVerified DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  orders    Order[]
+  address   Address?
+  carts     Cart[]
+}
+
+enum UserRole {
+  CUSTOMER
+  SALES
+  OPS
+  ADMIN
+}
+
+model EmailVerificationToken {
+  id        String   @id @default(cuid())
+  email     String
+  tokenHash String   @unique
+  expiresAt DateTime
+  consumedAt DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([email])
+}
+
+model Address {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  company    String?
+  phone      String?
+  line1      String?
+  line2      String?
+  city       String?
+  province   String?
+  postalCode String?
+  country    String?
+}
+
+enum OrderStatus {
+  DRAFT
+  PLACED
+  AWAITING_PAYMENT
+  PAID
+  PROCESSING
+  SHIPPED
+  CANCELLED
+  FULFILLED
+}
+
+enum PaymentMethod {
+  STRIPE
+  PAYPAL
+  INTERAC
+}
+
+model Order {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  publicRef String? @unique @db.VarChar(24)
+
+  status        OrderStatus   @default(PLACED)
+  paymentMethod PaymentMethod
+  currency      String        @default("CAD")
+
+  // If user is logged in
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id])
+
+  // Snapshot shipping (so order is stable even if user edits profile later)
+  shipName     String?
+  shipEmail    String?
+  shipCompany  String?
+  shipPhone    String?
+  shipLine1    String
+  shipLine2    String?
+  shipCity     String
+  shipProvince String
+  shipPostal   String
+  shipCountry  String
+
+  subtotal Int // store cents
+  items    OrderItem[]
+
+  stripePaymentIntentId String?   @unique
+  paidAt                DateTime?
+  receiptUrl            String?
+  confirmationEmailSent Boolean   @default(false)
+}
+
+model OrderItem {
+  id      String @id @default(cuid())
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  partNo String
+  qty    Int
+  price  Int // cents per unit at time of purchase
+}
+
+model Cart {
+  id     String  @id @default(cuid())
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  status CartStatus @default(ACTIVE)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  items CartItem[]
+}
+
+model CartItem {
+  id     String @id @default(cuid())
+  cartId String
+  cart   Cart   @relation(fields: [cartId], references: [id], onDelete: Cascade)
+
+  partNo String
+  qty    Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([cartId, partNo])
+}
+
+enum CartStatus {
+  ACTIVE
+  CHECKED_OUT
+}
+
+model Product {
+  id         String   @id @default(cuid())
+  partNo     String   @unique
+  name       String?
+  priceCents Int
+  images     String[] // optional if you want
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}

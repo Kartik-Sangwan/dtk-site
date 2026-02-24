@@ -1,0 +1,20 @@
+DO $$ BEGIN
+  CREATE TYPE "UserRole" AS ENUM ('CUSTOMER', 'SALES', 'OPS', 'ADMIN');
+EXCEPTION
+  WHEN duplicate_object THEN null;
+END $$;
+
+ALTER TABLE "User"
+ADD COLUMN IF NOT EXISTS "role" "UserRole" NOT NULL DEFAULT 'CUSTOMER';
+
+DO $$ BEGIN
+  ALTER TYPE "OrderStatus" ADD VALUE IF NOT EXISTS 'PROCESSING';
+EXCEPTION
+  WHEN duplicate_object THEN null;
+END $$;
+
+DO $$ BEGIN
+  ALTER TYPE "OrderStatus" ADD VALUE IF NOT EXISTS 'SHIPPED';
+EXCEPTION
+  WHEN duplicate_object THEN null;
+END $$;
