@@ -126,6 +126,8 @@ export default function AddToCartCard({ product }: { product: Product }) {
           {busy ? "Adding..." : "Add to Cart"}
         </button>
 
+        <p className="mt-3 text-xs italic text-slate-400">**Contact us for bulk order discounts.**</p>
+
         <Link
           href={`/contact?partNo=${encodeURIComponent(product.partNo)}`}
           className="mt-3 inline-flex w-full items-center justify-center rounded-md border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-gray-900 hover:bg-slate-50"

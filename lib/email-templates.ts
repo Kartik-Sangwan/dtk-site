@@ -1,5 +1,4 @@
-import fs from "node:fs";
-import path from "node:path";
+import { BUSINESS_FOOTER_NOTE } from "@/lib/business";
 
 type EmailSection = {
   heading?: string;
@@ -15,18 +14,22 @@ type IndustrialEmailOptions = {
   footerNote?: string;
 };
 
-let cachedLogoDataUri: string | null = null;
+function getLogoUrl() {
+  const explicit = process.env.EMAIL_LOGO_URL?.trim();
+  if (explicit) return explicit;
 
-function getLogoDataUri() {
-  if (cachedLogoDataUri) return cachedLogoDataUri;
-  try {
-    const filePath = path.join(process.cwd(), "public", "dtk-logo-final.png");
-    const buf = fs.readFileSync(filePath);
-    cachedLogoDataUri = `data:image/png;base64,${buf.toString("base64")}`;
-    return cachedLogoDataUri;
-  } catch {
-    return "";
-  }
+  // Temporary public logo host for local/dev email rendering.
+  const githubFallback =
+    "https://raw.githubusercontent.com/Kartik-Sangwan/temp-logo/main/dtk-logo-final.jpg";
+
+  const siteUrl =
+    process.env.NEXT_PUBLIC_SITE_URL?.trim() ||
+    process.env.APP_BASE_URL?.trim() ||
+    "https://dtkindustrial.com";
+  const normalized = siteUrl.endsWith("/") ? siteUrl.slice(0, -1) : siteUrl;
+  return process.env.NODE_ENV === "development"
+    ? githubFallback
+    : `${normalized}/dtk-final-logo.jpg`;
 }
 
 export function escapeHtml(value: string): string {
@@ -63,7 +66,7 @@ export function renderFieldGrid(
 }
 
 export function renderIndustrialEmail(opts: IndustrialEmailOptions): string {
-  const logoSrc = getLogoDataUri();
+  const logoSrc = getLogoUrl();
   const preheader = escapeHtml(opts.preheader || opts.title);
   const subtitle = opts.subtitle ? `<p style="margin:10px 0 0;color:#334155;font-size:14px;line-height:1.5;">${escapeHtml(opts.subtitle)}</p>` : "";
 
@@ -92,7 +95,7 @@ export function renderIndustrialEmail(opts: IndustrialEmailOptions): string {
     : "";
 
   const footer = escapeHtml(
-    opts.footerNote || "DTK Industrial Components Inc. | NFPA + ISO Cylinder Accessories"
+    opts.footerNote || BUSINESS_FOOTER_NOTE
   );
 
   return `
@@ -110,17 +113,14 @@ export function renderIndustrialEmail(opts: IndustrialEmailOptions): string {
           <td align="center">
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:700px;background:#ffffff;border:1px solid #94a3b8;border-radius:14px;overflow:hidden;">
               <tr>
-                <td style="padding:18px 24px;background:linear-gradient(110deg,#111827,#334155);border-bottom:4px solid #f59e0b;">
-                  ${logoSrc ? `<img
+                <td style="padding:18px 24px;background:#e2e8f0;border-bottom:4px solid #f59e0b;">
+                  <img
                     src="${logoSrc}"
                     alt="DTK Industrial"
                     width="170"
-                    style="display:block;height:auto;max-width:170px;margin:0 0 10px;"
-                  />` : ""}
-                  <div style="color:#f8fafc;font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;">
-                    DTK Industrial
-                  </div>
-                  <div style="margin-top:6px;color:#cbd5e1;font-size:12px;">
+                    style="display:block;height:auto;max-width:170px;margin:0 0 8px;"
+                  />
+                  <div style="margin-top:6px;color:#334155;font-size:12px;">
                     Production-ready hardware for hydraulic and pneumatic cylinders
                   </div>
                 </td>

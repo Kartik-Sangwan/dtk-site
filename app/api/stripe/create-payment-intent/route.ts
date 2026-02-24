@@ -12,9 +12,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Missing STRIPE_SECRET_KEY" }, { status: 500 });
   }
 
-  let body: any;
+  let body: Record<string, unknown>;
   try {
-    body = await req.json();
+    const parsed = await req.json();
+    body = parsed && typeof parsed === "object" ? (parsed as Record<string, unknown>) : {};
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
@@ -35,6 +36,7 @@ export async function POST(req: Request) {
 
   const cart = typeof body?.cart === "string" ? body.cart.slice(0, 500) : undefined;
   const shipping = body?.shipping;
+  const billing = body?.billing;
 
   const shippingParam: Stripe.PaymentIntentCreateParams.Shipping | undefined =
     shipping && typeof shipping === "object"
@@ -62,6 +64,11 @@ export async function POST(req: Request) {
         }
       : undefined;
 
+  const billingCountry =
+    billing && typeof billing?.country === "string" ? billing.country.toUpperCase() : "";
+  const billingPostal =
+    billing && typeof billing?.postal === "string" ? billing.postal.slice(0, 20) : "";
+
   const idempotencyKey = req.headers.get("x-idempotency-key") ?? undefined;
 
   try {
@@ -69,16 +76,22 @@ export async function POST(req: Request) {
       {
         amount: amountCents,
         currency,
-        automatic_payment_methods: { enabled: true },
+        payment_method_types: ["card"],
         receipt_email: receiptEmail,
         shipping: shippingParam,
-        metadata: { source: "dtk_place_order", cart: cart || "" },
+        metadata: {
+          source: "dtk_place_order",
+          cart: cart || "",
+          billing_country: billingCountry,
+          billing_postal: billingPostal,
+        },
       },
       idempotencyKey ? { idempotencyKey } : undefined
     );
 
     return NextResponse.json({ clientSecret: pi.client_secret, paymentIntentId: pi.id });
-  } catch (err: any) {
-    return NextResponse.json({ error: err?.message || "Stripe error" }, { status: 500 });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Stripe error";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useSession, signOut } from "next-auth/react";
 import { useEffect, useState, useCallback } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ShoppingCart } from "lucide-react";
 import { CART_SERVER_EVENT } from "@/lib/cart-client";
 import AuthModal from "@/components/AuthModal";
@@ -59,8 +60,14 @@ export default function Header() {
   const { data: session, status } = useSession();
   const count = useCartCount();
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authModalMode, setAuthModalMode] = useState<"signin" | "signup">("signin");
+  const [authModalSyncKey, setAuthModalSyncKey] = useState(0);
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const role = (session?.user as { role?: string } | undefined)?.role;
   const isStaff = role === "ADMIN" || role === "OPS" || role === "SALES";
+  const onLoginPage = pathname === "/login";
 
   return (
     <header className="sticky top-0 z-50 border-b border-slate-300/70 bg-white/90 backdrop-blur">
@@ -91,17 +98,17 @@ export default function Header() {
           <Link className="text-gray-700 hover:text-gray-900" href="/resources">
             Resources
           </Link>
-          <Link className="text-gray-700 hover:text-gray-900" href="/contact">
-            Contact
+          <Link className="text-gray-700 hover:text-gray-900" href="/inventory">
+            Inventory
           </Link>
           <Link className="text-gray-700 hover:text-gray-900" href="/about">
             About
           </Link>
+          <Link className="text-gray-700 hover:text-gray-900" href="/contact">
+            Contact
+          </Link>
           <Link className="text-gray-700 hover:text-gray-900" href="/feedback">
             Feedback
-          </Link>
-          <Link className="text-gray-700 hover:text-gray-900" href="/inventory">
-            Inventory
           </Link>
         </nav>
 
@@ -161,7 +168,20 @@ export default function Header() {
           ) : (
             <button
               type="button"
-              onClick={() => setShowAuthModal(true)}
+              onClick={() => {
+                if (onLoginPage) {
+                  const email = searchParams.get("email");
+                  router.push(
+                    email
+                      ? `/login?mode=signin&email=${encodeURIComponent(email)}`
+                      : "/login?mode=signin"
+                  );
+                  return;
+                }
+                setAuthModalMode("signin");
+                setAuthModalSyncKey((v) => v + 1);
+                setShowAuthModal(true);
+              }}
               className="inline-flex rounded-md bg-gray-900 px-3 py-2 text-sm font-semibold text-white hover:bg-gray-800"
             >
               Sign in
@@ -170,7 +190,12 @@ export default function Header() {
         </div>
       </div>
 
-      <AuthModal open={showAuthModal} onClose={() => setShowAuthModal(false)} />
+      <AuthModal
+        open={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        initialMode={authModalMode}
+        syncKey={authModalSyncKey}
+      />
     </header>
   );
 }

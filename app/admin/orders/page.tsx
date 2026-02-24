@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { updateOrderStatusAction } from "./actions";
+import { BASE_SHIPPING_RATE, TAX_RATE } from "@/lib/business";
 
 const STATUS_OPTIONS = [
   "AWAITING_PAYMENT",
@@ -17,7 +18,13 @@ function money(cents: number, currency: string) {
   }).format((cents || 0) / 100);
 }
 
-export default async function AdminOrdersPage() {
+export default async function AdminOrdersPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ ok?: string; err?: string }>;
+}) {
+  const sp = searchParams ? await searchParams : {};
+  const errorText = sp?.err ? decodeURIComponent(sp.err) : null;
   const orders = await prisma.order.findMany({
     orderBy: { createdAt: "desc" },
     take: 200,
@@ -35,6 +42,17 @@ export default async function AdminOrdersPage() {
         </div>
       </div>
 
+      {sp?.ok && (
+        <div className="mt-4 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+          Order updated successfully.
+        </div>
+      )}
+      {errorText && (
+        <div className="mt-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+          {errorText}
+        </div>
+      )}
+
       <div className="mt-4 overflow-x-auto">
         <table className="min-w-[1100px] w-full border-collapse text-sm">
           <thead>
@@ -50,8 +68,9 @@ export default async function AdminOrdersPage() {
           </thead>
           <tbody>
             {orders.map((order) => {
-              const shippingCents = Math.round(order.subtotal * 0.1);
-              const totalCents = order.subtotal + shippingCents;
+              const shippingCents = Math.round(order.subtotal * BASE_SHIPPING_RATE);
+              const taxCents = Math.round(order.subtotal * TAX_RATE);
+              const totalCents = order.subtotal + shippingCents + taxCents;
               const itemCount = order.items.reduce((sum, it) => sum + it.qty, 0);
               const label = order.publicRef || order.id;
               return (
@@ -78,8 +97,14 @@ export default async function AdminOrdersPage() {
                     </span>
                   </td>
                   <td className="px-3 py-3">
-                    <form action={updateOrderStatusAction} className="flex items-center gap-2">
+                    <form action={updateOrderStatusAction} className="flex flex-wrap items-center gap-2">
                       <input type="hidden" name="orderId" value={order.id} />
+                      <input
+                        name="trackingUrl"
+                        defaultValue={order.trackingUrl ?? ""}
+                        placeholder="https://carrier.example/track/..."
+                        className="h-9 w-[280px] rounded-md border border-slate-300 bg-white px-2 text-xs text-slate-800 outline-none placeholder:text-slate-400 focus:border-slate-500"
+                      />
                       <select
                         name="status"
                         defaultValue={order.status}
@@ -98,6 +123,9 @@ export default async function AdminOrdersPage() {
                         Save
                       </button>
                     </form>
+                    <p className="mt-1 text-[11px] text-slate-500">
+                      Set status to SHIPPED and save with tracking link.
+                    </p>
                   </td>
                 </tr>
               );

@@ -1,12 +1,12 @@
 // app/api/checkout/summary/route.ts
 import { NextResponse } from "next/server";
 import { findInventoryRowsByPartNos } from "@/lib/inventory";
+import { BASE_SHIPPING_RATE, TAX_RATE } from "@/lib/business";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 type CartLine = { partNo: string; qty: number };
-const BASE_SHIPPING_RATE = 0.1;
 
 function safeQty(n: unknown) {
   const q = Math.floor(Number(n ?? 0));
@@ -77,7 +77,7 @@ export async function POST(req: Request) {
     const subtotal = lineItems.reduce((s, it) => s + (Number(it.lineTotal) || 0), 0);
     const subtotalCents = Math.round(subtotal * 100);
     const shippingCents = Math.round(subtotalCents * BASE_SHIPPING_RATE);
-    const taxCents = 0;
+    const taxCents = Math.round(subtotalCents * TAX_RATE);
     const totalCents = subtotalCents + shippingCents + taxCents;
 
     const shipping = shippingCents / 100;

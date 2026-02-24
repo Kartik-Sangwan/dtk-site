@@ -5,6 +5,7 @@ import { renderIndustrialEmail } from "@/lib/email-templates";
 
 import { prisma } from "@/lib/prisma";
 import { generateVerificationToken, hashPassword, sha256Hex } from "@/lib/auth-security";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -25,6 +26,31 @@ export async function POST(req: Request) {
     const name = String(body?.name ?? "").trim();
     const email = String(body?.email ?? "").trim().toLowerCase();
     const password = String(body?.password ?? "");
+    const ip = getClientIp(req);
+
+    const ipLimit = checkRateLimit(`auth:signup:ip:${ip}`, {
+      windowMs: 15 * 60 * 1000,
+      max: 10,
+      blockMs: 20 * 60 * 1000,
+    });
+    if (!ipLimit.ok) {
+      return NextResponse.json(
+        { ok: false, error: `Too many attempts. Try again in ${ipLimit.retryAfterSec}s.` },
+        { status: 429 }
+      );
+    }
+
+    const emailLimit = checkRateLimit(`auth:signup:email:${email}`, {
+      windowMs: 30 * 60 * 1000,
+      max: 4,
+      blockMs: 30 * 60 * 1000,
+    });
+    if (!emailLimit.ok) {
+      return NextResponse.json(
+        { ok: false, error: `Too many attempts for this email. Try again in ${emailLimit.retryAfterSec}s.` },
+        { status: 429 }
+      );
+    }
 
     if (!name || !email || !password) {
       return NextResponse.json(
@@ -114,7 +140,6 @@ export async function POST(req: Request) {
         },
       ],
       cta: { label: "Verify Email", href: verifyUrl },
-      footerNote: "Need help? Reply to this message and our support team will assist.",
     });
 
     const { error } = await resend.emails.send({

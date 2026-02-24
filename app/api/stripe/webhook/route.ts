@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { Resend } from "resend";
 import { DEFAULT_FROM, SALES_EMAIL } from "@/lib/email-defaults";
 import { escapeHtml, renderIndustrialEmail } from "@/lib/email-templates";
+import { BASE_SHIPPING_RATE, TAX_RATE } from "@/lib/business";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -46,8 +47,9 @@ function renderOrderEmailHTML(opts: {
   receiptUrl?: string | null;
   items: { partNo: string; qty: number; priceCents: number }[];
 }) {
-  const shippingCents = Math.round(opts.subtotalCents * 0.1);
-  const totalCents = opts.subtotalCents + shippingCents;
+  const shippingCents = Math.round(opts.subtotalCents * BASE_SHIPPING_RATE);
+  const taxCents = Math.round(opts.subtotalCents * TAX_RATE);
+  const totalCents = opts.subtotalCents + shippingCents + taxCents;
   const rows = opts.items
     .map(
       (it) => `
@@ -91,12 +93,12 @@ function renderOrderEmailHTML(opts: {
         bodyHtml: `
           <p style="margin:0;color:#0f172a;font-size:14px;"><strong>Subtotal:</strong> ${money(opts.subtotalCents, opts.currency)}</p>
           <p style="margin:8px 0 0;color:#0f172a;font-size:14px;"><strong>Shipping (10%):</strong> ${money(shippingCents, opts.currency)}</p>
+          <p style="margin:8px 0 0;color:#0f172a;font-size:14px;"><strong>Tax (13%):</strong> ${money(taxCents, opts.currency)}</p>
           <p style="margin:8px 0 0;color:#0f172a;font-size:14px;"><strong>Order total:</strong> ${money(totalCents, opts.currency)}</p>
           ${receiptHtml}
         `,
       },
     ],
-    footerNote: "Reply to this email with your order reference if you need help.",
   });
 }
 

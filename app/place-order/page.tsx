@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import PlaceOrderClient from "@/components/PlaceOrderClient";
+import { BASE_SHIPPING_RATE, SUPPORT_EMAIL, SUPPORT_PHONE_DISPLAY, TAX_RATE } from "@/lib/business";
 
 type InitialShipping = {
   name: string;
@@ -71,6 +72,11 @@ export default async function PlaceOrderPage() {
         <p className="mt-3 text-sm text-gray-700">
           Shipping available to <span className="font-semibold">Canada</span> and{" "}
           <span className="font-semibold">USA</span>.
+        </p>
+        <p className="mt-2 text-sm text-gray-700">
+          Shipping {Math.round(BASE_SHIPPING_RATE * 100)}% of subtotal, tax {Math.round(TAX_RATE * 100)}% of subtotal.
+          Questions: <span className="font-semibold">{SUPPORT_EMAIL}</span> |{" "}
+          <span className="font-semibold">{SUPPORT_PHONE_DISPLAY}</span>.
         </p>
 
         <PlaceOrderClient

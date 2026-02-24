@@ -1,12 +1,11 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useRef, useState, type MutableRefObject } from "react";
+import { useEffect, useMemo, useRef, useState, type MutableRefObject } from "react";
 import { useRouter } from "next/navigation";
 import { loadStripe } from "@stripe/stripe-js";
 import {
   Elements,
-  ExpressCheckoutElement,
   PaymentElement,
   useElements,
   useStripe,
@@ -44,6 +43,32 @@ type Shipping = {
   country: "CA" | "US";
 };
 
+type Billing = {
+  name?: string;
+  company?: string;
+  phone?: string;
+  line1: string;
+  line2?: string;
+  city: string;
+  province: string;
+  postal: string;
+  country: "CA" | "US";
+};
+
+type StripeBillingDetails = {
+  name?: string;
+  email?: string;
+  phone?: string;
+  address: {
+    line1?: string;
+    line2?: string;
+    city?: string;
+    state?: string;
+    postal_code?: string;
+    country?: string;
+  };
+};
+
 function moneyFromCents(cents: number, currency: string) {
   return ((cents || 0) / 100).toLocaleString(undefined, {
     style: "currency",
@@ -53,6 +78,34 @@ function moneyFromCents(cents: number, currency: string) {
 
 function toErrorMessage(err: unknown, fallback: string) {
   return err instanceof Error ? err.message : fallback;
+}
+
+function friendlyPaymentError(message: string) {
+  const m = message.toLowerCase();
+  if (m.includes("insufficient") || m.includes("fund")) {
+    return "Your card has insufficient funds. Try another card.";
+  }
+  if (m.includes("declined")) {
+    return "Your card was declined. Please use a different card or contact your bank.";
+  }
+  if (m.includes("expired")) {
+    return "Your card appears to be expired. Please check details or use another card.";
+  }
+  if (m.includes("cvc") || m.includes("security code")) {
+    return "The card security code is invalid. Please re-check and try again.";
+  }
+  if (m.includes("postal") || m.includes("zip")) {
+    return "Postal/ZIP verification failed. Please confirm billing details.";
+  }
+  if (m.includes("network") || m.includes("timeout")) {
+    return "Network issue during payment. Check connection and retry.";
+  }
+  return message || "Payment failed. Please verify details and retry.";
+}
+
+function hasValidPhone(value: string) {
+  const digits = value.replace(/\D/g, "");
+  return digits.length === 10;
 }
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || "");
@@ -90,14 +143,27 @@ export default function PlaceOrderClient({
     }
   );
 
-  const [paymentMethod, setPaymentMethod] = useState<"STRIPE" | "PAYPAL" | "INTERAC">("STRIPE");
   const [saveToProfile, setSaveToProfile] = useState(true);
+  const [billingSameAsShipping, setBillingSameAsShipping] = useState(true);
+  const [billing, setBilling] = useState<Billing>({
+    name: initialShipping?.name ?? "",
+    company: initialShipping?.company ?? "",
+    phone: initialShipping?.phone ?? "",
+    line1: initialShipping?.line1 ?? "",
+    line2: initialShipping?.line2 ?? "",
+    city: initialShipping?.city ?? "",
+    province: initialShipping?.province ?? "",
+    postal: initialShipping?.postal ?? "",
+    country: initialShipping?.country ?? "CA",
+  });
 
   // --- Stripe
   const [stripeClientSecret, setStripeClientSecret] = useState<string | null>(null);
   const [stripePaymentIntentId, setStripePaymentIntentId] = useState<string | null>(null);
   const [stripeBusy, setStripeBusy] = useState(false);
   const [stripeError, setStripeError] = useState<string | null>(null);
+  const [paymentFailure, setPaymentFailure] = useState<string | null>(null);
+  const [paymentRetry, setPaymentRetry] = useState(0);
 
   const stripeConfirmRef = useRef<
     null | ((opts: { returnUrl: string }) => Promise<{ ok: boolean; error?: string }>)
@@ -105,23 +171,40 @@ export default function PlaceOrderClient({
 
   const [placing, setPlacing] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [toastTone, setToastTone] = useState<"success" | "error">("success");
   const tRef = useRef<number | null>(null);
 
-  function show(msg: string) {
+  function show(msg: string, tone: "success" | "error" = "success") {
     setToast(msg);
+    setToastTone(tone);
     if (tRef.current) window.clearTimeout(tRef.current);
     tRef.current = window.setTimeout(() => setToast(null), 2500);
   }
 
-  const needsStripe = paymentMethod === "STRIPE" || paymentMethod === "PAYPAL";
+  function retryPayment() {
+    setPaymentFailure(null);
+    setStripeError(null);
+    setStripeClientSecret(null);
+    setStripePaymentIntentId(null);
+    setPaymentRetry((v) => v + 1);
+  }
 
   const validCountry = shipping.country === "CA" || shipping.country === "US";
+  const billingValidCountry = billing.country === "CA" || billing.country === "US";
   const canPlaceShipping =
     validCountry &&
+    hasValidPhone(shipping.phone ?? "") &&
     shipping.line1.trim() &&
     shipping.city.trim() &&
     shipping.province.trim() &&
     shipping.postal.trim();
+  const canPlaceBilling =
+    billingSameAsShipping ||
+    (billingValidCountry &&
+      billing.line1.trim() &&
+      billing.city.trim() &&
+      billing.province.trim() &&
+      billing.postal.trim());
 
   // --- Load cart from server cookie cartId
   async function refreshCart() {
@@ -172,7 +255,7 @@ export default function PlaceOrderClient({
       });
     } catch (e: unknown) {
       setSummary(null);
-      show(toErrorMessage(e, "Failed to load totals"));
+      show(toErrorMessage(e, "Failed to load totals"), "error");
     } finally {
       setSummaryLoading(false);
     }
@@ -189,14 +272,53 @@ export default function PlaceOrderClient({
   const totalCents = summary?.totalCents ?? subtotalCents + shippingCents + taxCents;
   const currency = summary?.currency ?? "CAD";
 
-  const canPlace = canPlaceShipping && cartLines.length > 0 && !!summary;
+  const canPlace = canPlaceShipping && canPlaceBilling && cartLines.length > 0 && !!summary;
+  const effectiveBilling = useMemo(
+    () =>
+      billingSameAsShipping
+        ? {
+            name: shipping.name ?? "",
+            company: shipping.company ?? "",
+            phone: shipping.phone ?? "",
+            line1: shipping.line1,
+            line2: shipping.line2 ?? "",
+            city: shipping.city,
+            province: shipping.province,
+            postal: shipping.postal,
+            country: shipping.country,
+          }
+        : billing,
+    [billingSameAsShipping, shipping, billing]
+  );
+  const cartCount = cartLines.length;
+  const hasIntent = !!(stripeClientSecret && stripePaymentIntentId);
+  const cartPayload = useMemo(
+    () => cartLines.map((it) => `${it.partNo}:${it.qty}`).join("|"),
+    [cartLines]
+  );
+  const shippingPayload = useMemo(() => ({ ...shipping }), [shipping]);
+  const billingPayload = useMemo(() => ({ ...effectiveBilling }), [effectiveBilling]);
+  const stripeBillingDetails: StripeBillingDetails = {
+    name: effectiveBilling.name || shipping.name || undefined,
+    email: shipping.email || userEmail || undefined,
+    phone: effectiveBilling.phone || shipping.phone || undefined,
+    address: {
+      line1: effectiveBilling.line1 || undefined,
+      line2: effectiveBilling.line2 || undefined,
+      city: effectiveBilling.city || undefined,
+      state: effectiveBilling.province || undefined,
+      postal_code: effectiveBilling.postal || undefined,
+      country: effectiveBilling.country || undefined,
+    },
+  };
 
   // Reset Stripe intent whenever method or subtotal changes
   useEffect(() => {
     setStripeClientSecret(null);
     setStripePaymentIntentId(null);
     setStripeError(null);
-  }, [paymentMethod, totalCents]);
+    setPaymentFailure(null);
+  }, [totalCents]);
 
   // Create PaymentIntent ONLY when:
   // - Stripe-backed payment selected
@@ -206,11 +328,9 @@ export default function PlaceOrderClient({
     let aborted = false;
 
     async function ensureIntent() {
-      if (!needsStripe) return;
-      if (!canPlaceShipping) return;
-      if (!summary) return;
-      if (!totalCents || cartLines.length === 0) return;
-      if (stripeClientSecret && stripePaymentIntentId) return;
+      if (!canPlace) return;
+      if (!totalCents || cartCount === 0) return;
+      if (hasIntent) return;
 
       setStripeBusy(true);
       setStripeError(null);
@@ -222,8 +342,10 @@ export default function PlaceOrderClient({
           body: JSON.stringify({
             amountCents: totalCents,
             currency: String(currency).toLowerCase(),
-            cart: cartLines.map((it) => `${it.partNo}:${it.qty}`).join("|"),
+            cart: cartPayload,
             email: shipping.email || userEmail || undefined,
+            shipping: shippingPayload,
+            billing: billingPayload,
           }),
         });
 
@@ -235,7 +357,9 @@ export default function PlaceOrderClient({
         setStripePaymentIntentId(data.paymentIntentId);
       } catch (e: unknown) {
         if (aborted) return;
-        setStripeError(toErrorMessage(e, "Failed to initialize payment"));
+        const msg = toErrorMessage(e, "Failed to initialize payment");
+        setStripeError(msg);
+        setPaymentFailure(friendlyPaymentError(msg));
       } finally {
         if (!aborted) setStripeBusy(false);
       }
@@ -245,12 +369,22 @@ export default function PlaceOrderClient({
     return () => {
       aborted = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [needsStripe, canPlaceShipping, totalCents, currency, summary, JSON.stringify(cartLines)]);
+  }, [
+    canPlace,
+    totalCents,
+    currency,
+    paymentRetry,
+    cartCount,
+    hasIntent,
+    cartPayload,
+    shippingPayload,
+    billingPayload,
+    userEmail,
+    shipping.email,
+  ]);
 
   async function createOrder(): Promise<string> {
-    // IMPORTANT: For STRIPE/PAYPAL, block until we have the PaymentIntent ID.
-    if ((paymentMethod === "STRIPE" || paymentMethod === "PAYPAL") && !stripePaymentIntentId) {
+    if (!stripePaymentIntentId) {
       throw new Error("Payment form not ready yet (missing PaymentIntent). Please wait 1–2 seconds and try again.");
     }
 
@@ -260,7 +394,6 @@ export default function PlaceOrderClient({
       cache: "no-store",
       body: JSON.stringify({
         shipping,
-        paymentMethod,
         stripePaymentIntentId: stripePaymentIntentId ?? undefined,
         saveToProfile: isLoggedIn ? saveToProfile : false,
       }),
@@ -271,42 +404,62 @@ export default function PlaceOrderClient({
     return data.orderId as string;
   }
 
+  async function restoreCartAfterFailedPayment(lines: CartLine[]) {
+    if (!lines.length) return;
+    for (const line of lines) {
+      await fetch("/api/cart", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          op: "add",
+          partNo: line.partNo,
+          qty: line.qty,
+        }),
+      });
+    }
+    await refreshCart();
+  }
+
   async function placeOrder() {
     if (!canPlace) {
-      show("Please complete shipping (Canada/USA) and ensure cart has items.");
+      show(
+        "Please complete shipping/billing fields, use a valid 10-digit phone number, and ensure cart has items.",
+        "error"
+      );
       return;
     }
 
     setPlacing(true);
     try {
+      const cartSnapshot = cartLines.map((line) => ({ ...line }));
       const orderId = await createOrder();
 
-      if (paymentMethod === "STRIPE" || paymentMethod === "PAYPAL") {
-        if (!stripeClientSecret || !stripeConfirmRef.current) {
-          show("Payment form not ready yet. Please try again.");
-          return;
-        }
-
-        const returnUrl = `${window.location.origin}/order/${orderId}`;
-        const confirmed = await stripeConfirmRef.current({ returnUrl });
-
-        if (!confirmed.ok) {
-          show(confirmed.error ?? "Payment failed");
-          return;
-        }
-
-        router.push(`/order/${orderId}`);
+      if (!stripeClientSecret || !stripeConfirmRef.current) {
+        show("Payment form not ready yet. Please try again.", "error");
         return;
       }
 
-      if (paymentMethod === "INTERAC") {
-        router.push(`/order/${orderId}?method=interac`);
+      const returnUrl = `${window.location.origin}/order/${orderId}`;
+      const confirmed = await stripeConfirmRef.current({ returnUrl });
+
+      if (!confirmed.ok) {
+        const reason = friendlyPaymentError(confirmed.error ?? "Payment failed");
+        setPaymentFailure(reason);
+        try {
+          await restoreCartAfterFailedPayment(cartSnapshot);
+          show(`${reason} Cart restored. You can retry payment.`, "error");
+        } catch {
+          show(`${reason} Payment failed and cart restore could not complete automatically.`, "error");
+        }
         return;
       }
 
       router.push(`/order/${orderId}`);
     } catch (e: unknown) {
-      show(toErrorMessage(e, "Failed to place order"));
+      const msg = toErrorMessage(e, "Failed to place order");
+      const reason = friendlyPaymentError(msg);
+      setPaymentFailure(reason);
+      show(reason, "error");
     } finally {
       setPlacing(false);
     }
@@ -315,7 +468,14 @@ export default function PlaceOrderClient({
   return (
     <div className="mt-8 grid gap-8 lg:grid-cols-[1.25fr_0.85fr]">
       {toast && (
-        <div className="fixed right-5 top-20 z-[100] rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-900 shadow-lg">
+        <div
+          className={[
+            "fixed right-5 top-20 z-[100] rounded-xl border px-4 py-3 text-sm font-semibold shadow-lg",
+            toastTone === "error"
+              ? "border-red-200 bg-red-50 text-red-900"
+              : "border-emerald-200 bg-emerald-50 text-emerald-900",
+          ].join(" ")}
+        >
           {toast}
         </div>
       )}
@@ -376,49 +536,124 @@ export default function PlaceOrderClient({
           </div>
         </div>
 
+        <div className="border-b border-slate-200 py-6">
+          <h3 className="text-3xl font-semibold tracking-tight text-gray-900">Billing address</h3>
+          <div className="mt-3">
+            <label className="inline-flex items-center gap-2 text-sm font-semibold text-gray-800">
+              <input
+                type="checkbox"
+                checked={billingSameAsShipping}
+                onChange={(e) => setBillingSameAsShipping(e.target.checked)}
+              />
+              Billing same as shipping
+            </label>
+          </div>
+
+          {!billingSameAsShipping && (
+            <>
+              <div className="mt-5 grid gap-4 md:grid-cols-2">
+                <Field
+                  placeholder="Billing Name"
+                  value={billing.name ?? ""}
+                  onChange={(v) => setBilling((b) => ({ ...b, name: v }))}
+                />
+                <Field
+                  placeholder="Billing Company (optional)"
+                  value={billing.company ?? ""}
+                  onChange={(v) => setBilling((b) => ({ ...b, company: v }))}
+                />
+              </div>
+
+              <div className="mt-4 grid gap-4">
+                <Field
+                  placeholder="Billing Street Address *"
+                  value={billing.line1}
+                  onChange={(v) => setBilling((b) => ({ ...b, line1: v }))}
+                />
+                <Field
+                  placeholder="Billing Apt/Suite/Building (optional)"
+                  value={billing.line2 ?? ""}
+                  onChange={(v) => setBilling((b) => ({ ...b, line2: v }))}
+                />
+              </div>
+
+              <div className="mt-4 grid gap-4 md:grid-cols-3">
+                <Field
+                  placeholder="Billing City/Town *"
+                  value={billing.city}
+                  onChange={(v) => setBilling((b) => ({ ...b, city: v }))}
+                />
+                <Field
+                  placeholder="Billing Province/State *"
+                  value={billing.province}
+                  onChange={(v) => setBilling((b) => ({ ...b, province: v }))}
+                />
+                <Field
+                  placeholder="Billing Postal/ZIP *"
+                  value={billing.postal}
+                  onChange={(v) => setBilling((b) => ({ ...b, postal: v }))}
+                />
+              </div>
+
+              <div className="mt-4 md:max-w-md">
+                <select
+                  value={billing.country}
+                  onChange={(e) => setBilling((b) => ({ ...b, country: e.target.value as "CA" | "US" }))}
+                  aria-label="Billing Country"
+                  className="h-12 w-full rounded-md border border-slate-300 bg-white px-3 text-sm outline-none focus:border-slate-500"
+                >
+                  <option value="CA">Canada</option>
+                  <option value="US">United States</option>
+                </select>
+              </div>
+            </>
+          )}
+        </div>
+
         <div className="pt-6">
           <h3 className="text-3xl font-semibold tracking-tight text-gray-900">Payment</h3>
 
           <div className="mt-4">
-            <select
-              value={paymentMethod}
-              onChange={(e) =>
-                setPaymentMethod(e.target.value as "STRIPE" | "PAYPAL" | "INTERAC")
-              }
-              aria-label="Payment method"
-              className="h-12 w-full rounded-md border border-slate-300 bg-white px-3 text-sm outline-none focus:border-slate-500"
-            >
-              <option value="STRIPE">Credit/Debit card (Stripe)</option>
-              <option value="PAYPAL">Apple Pay / Google Pay / PayPal (Express)</option>
-              <option value="INTERAC">Interac e-Transfer (manual)</option>
-            </select>
-            <p className="mt-2 text-xs text-gray-600">
-              Apple Pay / Google Pay / PayPal buttons appear only on supported devices/browsers and if enabled in Stripe.
-            </p>
+            <div className="h-12 w-full rounded-md border border-slate-300 bg-slate-50 px-3 text-sm leading-[3rem] text-slate-700">
+              Credit/Debit card
+            </div>
           </div>
 
           <div className="mt-4">
-            {(paymentMethod === "STRIPE" || paymentMethod === "PAYPAL") && (
               <div className="rounded-xl border border-slate-200 bg-white p-4">
-                {!canPlaceShipping && (
+                {(!canPlaceShipping || !canPlaceBilling) && (
                   <div className="text-sm text-amber-700">
-                    Fill your shipping address above to load payment details.
+                    Fill your shipping and billing address above to load payment details.
                   </div>
                 )}
 
-                {canPlaceShipping && (!summary || summaryLoading) && (
+                {canPlaceShipping && canPlaceBilling && (!summary || summaryLoading) && (
                   <div className="text-sm text-gray-700">Loading totals…</div>
                 )}
 
-                {canPlaceShipping && summary && stripeBusy && (
+                {canPlaceShipping && canPlaceBilling && summary && stripeBusy && (
                   <div className="text-sm text-gray-700">Loading payment form…</div>
                 )}
 
-                {canPlaceShipping && stripeError && (
+                {canPlaceShipping && canPlaceBilling && stripeError && (
                   <div className="mt-2 text-sm text-red-700">{stripeError}</div>
                 )}
 
-                {canPlaceShipping && summary && stripeClientSecret && (
+                {canPlaceShipping && canPlaceBilling && paymentFailure && (
+                  <div className="mt-3 rounded-md border border-red-200 bg-red-50 p-3">
+                    <div className="text-sm font-semibold text-red-800">Payment issue</div>
+                    <div className="mt-1 text-sm text-red-700">{paymentFailure}</div>
+                    <button
+                      type="button"
+                      onClick={retryPayment}
+                      className="mt-2 rounded-md border border-red-300 bg-white px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-50"
+                    >
+                      Retry payment
+                    </button>
+                  </div>
+                )}
+
+                {canPlaceShipping && canPlaceBilling && summary && stripeClientSecret && (
                   <Elements
                     stripe={stripePromise}
                     options={{
@@ -427,27 +662,16 @@ export default function PlaceOrderClient({
                     }}
                   >
                     <StripePanel
-                      method={paymentMethod}
                       confirmRef={stripeConfirmRef}
-                      createOrder={createOrder}
-                      setStripeError={setStripeError}
+                      billingDetails={stripeBillingDetails}
                     />
                   </Elements>
                 )}
 
-                {canPlaceShipping && summary && !stripeBusy && !stripeClientSecret && (
+                {canPlaceShipping && canPlaceBilling && summary && !stripeBusy && !stripeClientSecret && (
                   <div className="text-sm text-red-700">Unable to load payment form.</div>
                 )}
               </div>
-            )}
-
-            {paymentMethod === "INTERAC" && (
-              <div className="rounded-xl border border-slate-200 bg-white p-4">
-                <div className="text-sm text-gray-700">
-                  You’ll place the order first. Then we’ll show e-Transfer instructions (recipient + reference).
-                </div>
-              </div>
-            )}
           </div>
         </div>
 
@@ -535,27 +759,22 @@ export default function PlaceOrderClient({
         </div>
 
         <button
-          disabled={!canPlace || placing || paymentMethod === "PAYPAL"}
+          disabled={!canPlace || placing}
           onClick={placeOrder}
           className={[
             "mt-6 inline-flex w-full items-center justify-center rounded-md px-4 py-3 text-sm font-semibold",
-            !canPlace || placing || paymentMethod === "PAYPAL"
+            !canPlace || placing
               ? "bg-gray-300 text-gray-600"
               : "bg-gray-900 text-white hover:bg-gray-800",
           ].join(" ")}
         >
-          {placing ? "Placing order..." : paymentMethod === "PAYPAL" ? "Use Express Checkout below" : "Place Order"}
+          {placing ? "Placing order..." : "Place Order"}
         </button>
 
         <div className="mt-3 text-xs text-gray-600">
           By placing your order, you agree orders ship to Canada/USA only.
         </div>
 
-        {paymentMethod === "PAYPAL" && (
-          <div className="mt-2 text-xs text-gray-600">
-            Complete payment using the Apple Pay / Google Pay / PayPal buttons in the payment section.
-          </div>
-        )}
       </aside>
     </div>
   );
@@ -582,31 +801,37 @@ function Field({
 }
 
 function StripePanel({
-  method,
   confirmRef,
-  createOrder,
-  setStripeError,
+  billingDetails,
 }: {
-  method: "STRIPE" | "PAYPAL";
   confirmRef: MutableRefObject<
     null | ((opts: { returnUrl: string }) => Promise<{ ok: boolean; error?: string }>)
   >;
-  createOrder: () => Promise<string>;
-  setStripeError: (msg: string | null) => void;
+  billingDetails: StripeBillingDetails;
 }) {
   const stripe = useStripe();
   const elements = useElements();
+  const stripeRef = useRef(stripe);
+  const elementsRef = useRef(elements);
+  const billingRef = useRef(billingDetails);
 
   useEffect(() => {
-    if (method !== "STRIPE") {
-      confirmRef.current = null;
-      return;
-    }
+    stripeRef.current = stripe;
+    elementsRef.current = elements;
+    billingRef.current = billingDetails;
+  }, [stripe, elements, billingDetails]);
+
+  useEffect(() => {
     confirmRef.current = async ({ returnUrl }) => {
-      if (!stripe || !elements) return { ok: false, error: "Stripe not ready" };
-      const { error } = await stripe.confirmPayment({
-        elements,
-        confirmParams: { return_url: returnUrl },
+      const currentStripe = stripeRef.current;
+      const currentElements = elementsRef.current;
+      if (!currentStripe || !currentElements) return { ok: false, error: "Stripe not ready" };
+      const { error } = await currentStripe.confirmPayment({
+        elements: currentElements,
+        confirmParams: {
+          return_url: returnUrl,
+          payment_method_data: { billing_details: billingRef.current },
+        },
         redirect: "if_required",
       });
       return error ? { ok: false, error: error.message } : { ok: true };
@@ -614,58 +839,12 @@ function StripePanel({
     return () => {
       confirmRef.current = null;
     };
-  }, [stripe, elements, confirmRef, method]);
-
-  if (method === "PAYPAL") {
-    return (
-      <div>
-        <div className="text-sm font-semibold text-gray-900">Express checkout</div>
-        <p className="mt-1 text-xs text-gray-600">
-          Shows Apple Pay / Google Pay / PayPal buttons when available on your device and enabled in Stripe.
-        </p>
-        <div className="mt-3">
-          <ExpressCheckoutElement
-            onConfirm={async (event) => {
-              if (!stripe || !elements) {
-                event.paymentFailed({ reason: "fail" });
-                return;
-              }
-
-              try {
-                const orderId = await createOrder();
-                const returnUrl = `${window.location.origin}/order/${orderId}`;
-
-                const { error } = await stripe.confirmPayment({
-                  elements,
-                  confirmParams: { return_url: returnUrl },
-                  redirect: "if_required",
-                });
-
-                if (error) {
-                  event.paymentFailed({ reason: "fail" });
-                  setStripeError(error.message ?? "Payment failed");
-                  return;
-                }
-              } catch (e: unknown) {
-                event.paymentFailed({ reason: "fail" });
-                setStripeError(toErrorMessage(e, "Payment failed"));
-              }
-            }}
-          />
-        </div>
-        <div className="mt-3 text-xs text-gray-600">
-          Note: Redirect-based methods (like PayPal) will take the customer away and return to your site.
-        </div>
-      </div>
-    );
-  }
+  }, [confirmRef]);
 
   return (
     <div>
       <div className="text-sm font-semibold text-gray-900">Card details</div>
-      <p className="mt-1 text-xs text-gray-600">
-        Enter credit/debit card details below. Apple Pay / Google Pay can be offered via Express Checkout.
-      </p>
+      <p className="mt-1 text-xs text-gray-600">Enter credit/debit card details below.</p>
       <div className="mt-3">
         <PaymentElement options={{ layout: "accordion" }} />
       </div>

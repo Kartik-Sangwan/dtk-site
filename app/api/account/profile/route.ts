@@ -6,6 +6,7 @@ import { auth } from "@/auth";
 type ProfilePayload = {
   name?: string;
   email?: string; // ignored (server trusts session)
+  image?: string | null;
   company?: string | null;
   phone?: string | null;
   shippingAddress1?: string | null;
@@ -46,7 +47,7 @@ export async function POST(req: Request) {
     },
     update: {
       name: clean(body.name) ?? session.user?.name ?? null,
-      image: session.user?.image ?? null,
+      image: clean(body.image) ?? session.user?.image ?? null,
     },
     select: { id: true, email: true, name: true, image: true },
   });

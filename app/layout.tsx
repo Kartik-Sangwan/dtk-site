@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import Header from "@/components/Header";
 import Providers from "@/components/Providers";
+import SiteFooter from "@/components/SiteFooter";
 
 export const metadata: Metadata = {
   title: "DTK Industrial Components",
@@ -15,6 +16,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Providers>
           <Header />
           {children}
+          <SiteFooter />
         </Providers>
       </body>
     </html>

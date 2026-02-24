@@ -1,20 +1,22 @@
 export const dynamic = "force-dynamic";
 
+import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { BASE_SHIPPING_RATE, TAX_RATE } from "@/lib/business";
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import OrderStatusRefresh from "./OrderStatusRefresh";
+import { House, PackageSearch, Truck } from "lucide-react";
 
 export default async function OrderPage({
   params,
-  searchParams,
 }: {
   params: Promise<{ orderId?: string }>;
-  searchParams?: Promise<{ method?: string }>;
 }) {
   const { orderId } = await params;
-  const sp = searchParams ? await searchParams : {};
 
   if (!orderId) return notFound();
+  const session = await auth();
 
   const order = await prisma.order.findFirst({
     where: {
@@ -26,8 +28,7 @@ export default async function OrderPage({
   if (!order) return notFound();
 
   if (order.publicRef && orderId !== order.publicRef) {
-    const suffix = sp?.method ? `?method=${encodeURIComponent(sp.method)}` : "";
-    redirect(`/order/${order.publicRef}${suffix}`);
+    redirect(`/order/${order.publicRef}`);
   }
 
   const money = (cents: number, currency: string) =>
@@ -36,16 +37,31 @@ export default async function OrderPage({
       currency: currency || "CAD",
     }).format((cents || 0) / 100);
 
-  const isInterac = order.paymentMethod === "INTERAC" || sp?.method === "interac";
   const isPaid = order.status === "PAID";
   const isProcessing = order.status === "PROCESSING";
   const isShipped = order.status === "SHIPPED";
   const isFulfilled = order.status === "FULFILLED";
-  const shippingCents = Math.round(order.subtotal * 0.1);
-  const totalCents = order.subtotal + shippingCents;
+  const shippingCents = Math.round(order.subtotal * BASE_SHIPPING_RATE);
+  const taxCents = Math.round(order.subtotal * TAX_RATE);
+  const totalCents = order.subtotal + shippingCents + taxCents;
   const orderRef = order.publicRef || order.id;
   const eta = new Date(order.createdAt.getTime() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString();
   const statusLabel = order.status.replaceAll("_", " ");
+  const showTrackingLink = (isShipped || isFulfilled) && !!order.trackingUrl;
+  const isGuestViewer = !session?.user?.email;
+  const existingUser =
+    order.shipEmail
+      ? await prisma.user.findUnique({
+          where: { email: order.shipEmail.toLowerCase() },
+          select: { id: true },
+        })
+      : null;
+  const authMode = existingUser ? "signin" : "signup";
+  const guestAuthHref = `/login?mode=${authMode}${
+    order.shipEmail ? `&email=${encodeURIComponent(order.shipEmail)}` : ""
+  }${
+    !existingUser && order.shipName ? `&name=${encodeURIComponent(order.shipName)}` : ""
+  }`;
 
   const trackingSteps = [
     {
@@ -102,6 +118,32 @@ export default async function OrderPage({
 
         <div className="mt-5 grid gap-4 lg:grid-cols-[1.3fr_0.9fr]">
           <div className="space-y-4">
+            {isGuestViewer && (
+              <div className="rounded-2xl border border-indigo-200 bg-indigo-50 p-5 shadow-sm">
+                <p className="text-sm font-semibold text-indigo-900">
+                  {existingUser
+                    ? "You already have an account. Sign in to link this order to your order history."
+                    : "Save this order to your account for faster tracking next time."}
+                </p>
+                <p className="mt-2 text-sm text-indigo-800">
+                  {existingUser
+                    ? "Use the same checkout email to sign in quickly."
+                    : "Create an account or sign in using the same checkout email to see order history in one place."}
+                </p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <Link
+                    href={guestAuthHref}
+                    className="inline-flex rounded-md bg-slate-900 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-800"
+                  >
+                    {existingUser ? "Sign in" : "Create account / Sign in"}
+                  </Link>
+                  <span className="inline-flex items-center rounded-md border border-indigo-200 bg-white px-3 py-2 text-xs text-indigo-900">
+                    Keep order ref: {orderRef}
+                  </span>
+                </div>
+              </div>
+            )}
+
             <div
               className={[
                 "rounded-2xl border p-5",
@@ -125,7 +167,10 @@ export default async function OrderPage({
             </div>
 
             <div className="rounded-2xl border border-slate-300 bg-white p-5 shadow-sm">
-              <h2 className="text-lg font-semibold text-gray-900">Tracking Progress</h2>
+              <h2 className="inline-flex items-center gap-2 text-lg font-semibold text-gray-900">
+                <Truck className="h-5 w-5 text-slate-600" aria-hidden="true" />
+                Tracking Progress
+              </h2>
               <ol className="mt-4 space-y-3">
                 {trackingSteps.map((step) => (
                   <li key={step.title} className="flex items-start gap-3">
@@ -150,36 +195,65 @@ export default async function OrderPage({
               </ol>
             </div>
 
-            {isInterac && (
-              <div className="rounded-2xl border border-slate-300 bg-white p-5 shadow-sm">
-                <div className="font-semibold text-gray-900">Interac e-Transfer instructions</div>
-                <p className="mt-2 text-sm text-gray-700">
-                  Send an Interac e-Transfer and include your order reference:
-                </p>
-                <div className="mt-3 rounded-lg border bg-slate-50 p-3 text-sm">
-                  <div>
-                    <span className="font-semibold">Reference:</span> {orderRef}
-                  </div>
-                </div>
+            <div className="rounded-2xl border border-slate-300 bg-white p-5 shadow-sm">
+              <h2 className="inline-flex items-center gap-2 text-lg font-semibold text-gray-900">
+                <House className="h-5 w-5 text-slate-600" aria-hidden="true" />
+                Shipping Address
+              </h2>
+              <div className="mt-2 text-sm text-gray-700">
+                {order.shipName ?? ""}
+                {order.shipCompany ? ` — ${order.shipCompany}` : ""}
+                <br />
+                {order.shipLine1}
+                {order.shipLine2 ? `, ${order.shipLine2}` : ""}
+                <br />
+                {order.shipCity}, {order.shipProvince} {order.shipPostal}
+                <br />
+                {order.shipCountry}
               </div>
-            )}
+            </div>
+
           </div>
 
           <aside className="space-y-4">
             <div className="rounded-2xl border border-slate-300 bg-white p-5 shadow-sm">
-              <h2 className="text-lg font-semibold text-gray-900">Tracking Details</h2>
-              <div className="mt-3 space-y-2 text-sm">
+              <h2 className="inline-flex items-center gap-2 text-lg font-semibold text-gray-900">
+                <PackageSearch className="h-5 w-5 text-slate-600" aria-hidden="true" />
+                Tracking Details
+              </h2>
+              <div className="mt-3 text-sm text-gray-700">
+                {showTrackingLink ? (
+                  <div className="space-y-3">
+                    <p className="text-gray-600">
+                      Your order has shipped. Use the tracking link below to follow delivery.
+                    </p>
+                    <a
+                      href={order.trackingUrl || "#"}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex rounded-md bg-slate-900 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-800"
+                    >
+                      Open Tracking Link
+                    </a>
+                    <div className="flex justify-between pt-2">
+                      <span className="text-gray-600">Estimated arrival</span>
+                      <span className="font-semibold text-gray-900">{eta}</span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <p className="text-amber-700">
+                      Tracking details will be available once shipped.
+                    </p>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Estimated arrival</span>
+                      <span className="font-semibold text-gray-900">{eta}</span>
+                    </div>
+                  </div>
+                )}
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Tracking number</span>
-                  <span className="font-semibold text-amber-700">Pending</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Carrier</span>
-                  <span className="font-semibold text-amber-700">Pending</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Estimated arrival</span>
-                  <span className="font-semibold text-gray-900">{eta}</span>
+                  <span className="text-gray-600">Current status</span>
+                  <span className="font-semibold text-gray-900">{statusLabel}</span>
                 </div>
               </div>
             </div>
@@ -211,25 +285,15 @@ export default async function OrderPage({
                 <span className="font-semibold text-gray-900">{money(shippingCents, order.currency)}</span>
               </div>
               <div className="mt-2 flex justify-between text-sm">
+                <span className="text-gray-700">Tax (13%)</span>
+                <span className="font-semibold text-gray-900">{money(taxCents, order.currency)}</span>
+              </div>
+              <div className="mt-2 flex justify-between text-sm">
                 <span className="font-semibold text-gray-900">Total</span>
                 <span className="font-bold text-gray-900">{money(totalCents, order.currency)}</span>
               </div>
             </div>
 
-            <div className="rounded-2xl border border-slate-300 bg-white p-5 shadow-sm">
-              <h2 className="text-lg font-semibold text-gray-900">Shipping Address</h2>
-              <div className="mt-2 text-sm text-gray-700">
-                {order.shipName ?? ""}
-                {order.shipCompany ? ` — ${order.shipCompany}` : ""}
-                <br />
-                {order.shipLine1}
-                {order.shipLine2 ? `, ${order.shipLine2}` : ""}
-                <br />
-                {order.shipCity}, {order.shipProvince} {order.shipPostal}
-                <br />
-                {order.shipCountry}
-              </div>
-            </div>
           </aside>
         </div>
       </section>

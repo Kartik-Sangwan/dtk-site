@@ -39,6 +39,17 @@ model EmailVerificationToken {
   @@index([email])
 }
 
+model PasswordResetToken {
+  id         String   @id @default(cuid())
+  email      String
+  tokenHash  String   @unique
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime @default(now())
+
+  @@index([email])
+}
+
 model Address {
   id     String @id @default(cuid())
   userId String @unique
@@ -103,8 +114,11 @@ model Order {
 
   stripePaymentIntentId String?   @unique
   paidAt                DateTime?
+  shippedAt             DateTime?
+  trackingUrl           String?
   receiptUrl            String?
   confirmationEmailSent Boolean   @default(false)
+  shippingUpdateEmailSent Boolean @default(false)
 }
 
 model OrderItem {

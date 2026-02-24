@@ -4,6 +4,7 @@ import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
 import { prisma } from "@/lib/prisma";
 import { verifyPassword } from "@/lib/auth-security";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
@@ -17,10 +18,25 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
       },
-      async authorize(credentials) {
+      async authorize(credentials, req) {
         const email = String(credentials?.email ?? "").trim().toLowerCase();
         const password = String(credentials?.password ?? "");
         if (!email || !password) return null;
+
+        const ip = req ? getClientIp(req) : "unknown";
+        const limitByIp = checkRateLimit(`auth:login:ip:${ip}`, {
+          windowMs: 10 * 60 * 1000,
+          max: 20,
+          blockMs: 15 * 60 * 1000,
+        });
+        if (!limitByIp.ok) return null;
+
+        const limitByEmail = checkRateLimit(`auth:login:email:${email}`, {
+          windowMs: 10 * 60 * 1000,
+          max: 8,
+          blockMs: 15 * 60 * 1000,
+        });
+        if (!limitByEmail.ok) return null;
 
         const user = await prisma.user.findUnique({
           where: { email },

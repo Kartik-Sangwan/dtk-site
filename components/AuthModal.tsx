@@ -4,13 +4,18 @@ import { useEffect } from "react";
 import { createPortal } from "react-dom";
 
 import AuthPanel from "@/components/AuthPanel";
+type AuthMode = "signin" | "signup";
 
 export default function AuthModal({
   open,
   onClose,
+  initialMode = "signin",
+  syncKey = 0,
 }: {
   open: boolean;
   onClose: () => void;
+  initialMode?: AuthMode;
+  syncKey?: number;
 }) {
   useEffect(() => {
     if (!open) return;
@@ -42,7 +47,7 @@ export default function AuthModal({
           </button>
         </div>
         <div className="max-h-[90vh] overflow-y-auto rounded-2xl">
-          <AuthPanel onAuthSuccess={onClose} />
+          <AuthPanel key={`${initialMode}-${syncKey}`} onAuthSuccess={onClose} initialMode={initialMode} />
         </div>
       </div>
     </div>,

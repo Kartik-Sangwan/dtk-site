@@ -27,6 +27,11 @@ function normalizeCountry(country: string) {
   return c;
 }
 
+function hasValidPhone(value: string) {
+  const digits = value.replace(/\D/g, "");
+  return digits.length === 10;
+}
+
 async function getCartIdCookie(): Promise<string | null> {
   const c = await cookies();
   return c.get(CART_COOKIE)?.value ?? null;
@@ -43,7 +48,6 @@ export async function POST(req: Request) {
 
   const {
     shipping,
-    paymentMethod,
     saveToProfile,
     stripePaymentIntentId,
   }: {
@@ -59,10 +63,16 @@ export async function POST(req: Request) {
       postal: string;
       country: string;
     };
-    paymentMethod: "STRIPE" | "PAYPAL" | "INTERAC";
     saveToProfile?: boolean;
     stripePaymentIntentId?: string;
   } = body;
+
+  if (body?.paymentMethod && body.paymentMethod !== "STRIPE") {
+    return NextResponse.json(
+      { error: "Only card payments are currently supported." },
+      { status: 400 }
+    );
+  }
 
   // ---- Validate shipping
   if (!shipping?.line1 || !shipping?.city || !shipping?.province || !shipping?.postal || !shipping?.country) {
@@ -71,13 +81,19 @@ export async function POST(req: Request) {
   if (!isAllowedCountry(shipping.country)) {
     return NextResponse.json({ error: "Shipping is only available to Canada and USA" }, { status: 400 });
   }
+  if (!hasValidPhone(String(shipping.phone ?? ""))) {
+    return NextResponse.json(
+      { error: "Phone number must include 10 digits (dashes/spaces allowed)." },
+      { status: 400 }
+    );
+  }
 
   const country = normalizeCountry(shipping.country);
 
-  // ---- Stripe-backed methods need a paymentIntentId
-  if ((paymentMethod === "STRIPE" || paymentMethod === "PAYPAL") && !stripePaymentIntentId) {
+  // ---- Card payment requires a PaymentIntent
+  if (!stripePaymentIntentId) {
     return NextResponse.json(
-      { error: "Missing stripePaymentIntentId for Stripe-backed payments" },
+      { error: "Missing stripePaymentIntentId for card payment" },
       { status: 400 }
     );
   }
@@ -141,7 +157,7 @@ export async function POST(req: Request) {
   // expected: items: [{ partNo, qty, unitPriceCents }]
   const pricedItems: { partNo: string; qty: number; unitPriceCents: number }[] =
     Array.isArray(summary?.items)
-      ? summary.items.map((x: any) => ({
+      ? summary.items.map((x: { partNo?: unknown; qty?: unknown; unitPriceCents?: unknown }) => ({
           partNo: String(x.partNo),
           qty: Number(x.qty ?? 0),
           unitPriceCents: Number(x.unitPriceCents ?? 0),
@@ -204,7 +220,7 @@ export async function POST(req: Request) {
             publicRef,
             userId,
             status: "AWAITING_PAYMENT",
-            paymentMethod,
+            paymentMethod: "STRIPE",
             currency: country === "US" ? "USD" : "CAD",
             stripePaymentIntentId: stripePaymentIntentId ?? null,
 
@@ -242,7 +258,7 @@ export async function POST(req: Request) {
       });
 
       break; // success
-    } catch (e: any) {
+    } catch (e: unknown) {
       // publicRef unique collision
       if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") continue;
       throw e;

@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { BASE_SHIPPING_RATE, TAX_RATE } from "@/lib/business";
 
 function money(cents: number, currency: string) {
   return new Intl.NumberFormat(undefined, {
@@ -91,8 +92,9 @@ export default async function AccountOrdersPage() {
         ) : (
           <div className="mt-6 space-y-4">
             {orders.map((order) => {
-              const shippingCents = Math.round(order.subtotal * 0.1);
-              const totalCents = order.subtotal + shippingCents;
+              const shippingCents = Math.round(order.subtotal * BASE_SHIPPING_RATE);
+              const taxCents = Math.round(order.subtotal * TAX_RATE);
+              const totalCents = order.subtotal + shippingCents + taxCents;
               const itemCount = order.items.reduce((sum, it) => sum + it.qty, 0);
               const ref = order.publicRef || order.id;
 
@@ -140,7 +142,7 @@ export default async function AccountOrdersPage() {
                       </div>
                     </div>
                     <div>
-                      <div className="text-gray-500">Total (incl. shipping)</div>
+                      <div className="text-gray-500">Total (incl. shipping + tax)</div>
                       <div className="font-semibold text-gray-900">
                         {money(totalCents, order.currency)}
                       </div>

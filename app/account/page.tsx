@@ -32,6 +32,7 @@ export default async function AccountPage() {
   const initialProfile: AccountProfile = {
     name: user?.name ?? session.user.name ?? "",
     email: user?.email ?? session.user.email,
+    image: user?.image ?? session.user.image ?? "",
     company: user?.address?.company ?? "",
     phone: user?.address?.phone ?? "",
     shippingAddress1: user?.address?.line1 ?? "",

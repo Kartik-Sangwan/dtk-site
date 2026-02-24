@@ -11,6 +11,11 @@ function isValidEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
+function hasValidPhone(phone: string) {
+  const digits = phone.replace(/\D/g, "");
+  return digits.length === 10;
+}
+
 export async function POST(req: Request) {
   try {
     const body = await req.json();
@@ -30,6 +35,13 @@ export async function POST(req: Request) {
     if (!isValidEmail(email)) {
       return NextResponse.json(
         { ok: false, error: "Please enter a valid email." },
+        { status: 400 }
+      );
+    }
+
+    if (!hasValidPhone(phone)) {
+      return NextResponse.json(
+        { ok: false, error: "Please enter a valid 10-digit phone number." },
         { status: 400 }
       );
     }

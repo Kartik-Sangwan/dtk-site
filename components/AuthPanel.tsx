@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
@@ -10,20 +10,26 @@ type Mode = "signin" | "signup";
 export default function AuthPanel({
   onAuthSuccess,
   showVerified,
+  initialMode = "signin",
+  initialEmail = "",
+  initialName = "",
 }: {
   onAuthSuccess?: () => void;
   showVerified?: boolean;
+  initialMode?: Mode;
+  initialEmail?: string;
+  initialName?: string;
 }) {
   const router = useRouter();
 
-  const [mode, setMode] = useState<Mode>("signin");
+  const [mode, setMode] = useState<Mode>(initialMode);
   const [rememberMe, setRememberMe] = useState(true);
 
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(initialEmail);
   const [password, setPassword] = useState("");
 
-  const [name, setName] = useState("");
-  const [signupEmail, setSignupEmail] = useState("");
+  const [name, setName] = useState(initialName);
+  const [signupEmail, setSignupEmail] = useState(initialEmail);
   const [signupPassword, setSignupPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showSignInPassword, setShowSignInPassword] = useState(false);
@@ -31,8 +37,29 @@ export default function AuthPanel({
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const [busy, setBusy] = useState(false);
+  const [resetBusy, setResetBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const resetRedirectRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    setMode(initialMode);
+  }, [initialMode]);
+
+  useEffect(() => {
+    setEmail(initialEmail);
+    setSignupEmail(initialEmail);
+  }, [initialEmail]);
+
+  useEffect(() => {
+    setName(initialName);
+  }, [initialName]);
+
+  useEffect(() => {
+    return () => {
+      if (resetRedirectRef.current) window.clearTimeout(resetRedirectRef.current);
+    };
+  }, []);
 
   async function onSignInSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -96,9 +123,60 @@ export default function AuthPanel({
     setConfirmPassword("");
   }
 
+  async function onForgotPassword() {
+    const candidateEmail = (email || signupEmail).trim();
+    if (!candidateEmail) {
+      setErr("Enter your email first, then click Forgot password.");
+      return;
+    }
+
+    setResetBusy(true);
+    setErr(null);
+    setMsg(null);
+    try {
+      const res = await fetch("/api/auth/reset", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: candidateEmail }),
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        ok?: boolean;
+        error?: string;
+        message?: string;
+        code?: string;
+        redirectTo?: string;
+      };
+      if (!res.ok || data?.ok === false) {
+        if (data?.code === "ACCOUNT_NOT_FOUND") {
+          setErr("Account doesn't exist for this email. Redirecting to create account...");
+          if (resetRedirectRef.current) window.clearTimeout(resetRedirectRef.current);
+          resetRedirectRef.current = window.setTimeout(() => {
+            onAuthSuccess?.();
+            router.push(data.redirectTo || `/login?mode=signup&email=${encodeURIComponent(candidateEmail)}`);
+          }, 3000);
+          return;
+        }
+        setErr(data?.error || "Could not process reset request.");
+        return;
+      }
+      setMsg(data?.message || "Reset password email sent.");
+      if (resetRedirectRef.current) window.clearTimeout(resetRedirectRef.current);
+      resetRedirectRef.current = window.setTimeout(() => {
+        onAuthSuccess?.();
+        router.push(`/login?mode=signin&email=${encodeURIComponent(candidateEmail)}`);
+      }, 3000);
+    } catch {
+      setErr("Could not process reset request.");
+    } finally {
+      setResetBusy(false);
+    }
+  }
+
   return (
     <div className="rounded-2xl border border-slate-300 bg-white p-6 shadow-xl md:p-7">
-      <h1 className="text-3xl font-semibold tracking-tight text-slate-800">Sign in to your account</h1>
+      <h1 className="text-3xl font-semibold tracking-tight text-slate-800">
+        {mode === "signup" ? "Create your account" : "Sign in to your account"}
+      </h1>
 
       <div className="mt-4 flex items-center gap-2 text-sm">
         <button
@@ -157,8 +235,13 @@ export default function AuthPanel({
                 >
                   {showSignInPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
-                <button type="button" className="text-xs font-semibold text-indigo-600 hover:underline">
-                  Forgot password?
+                <button
+                  type="button"
+                  onClick={onForgotPassword}
+                  disabled={resetBusy}
+                  className="text-xs font-semibold text-indigo-600 hover:underline disabled:opacity-60"
+                >
+                  {resetBusy ? "Sending..." : "Forgot password?"}
                 </button>
               </div>
             </div>

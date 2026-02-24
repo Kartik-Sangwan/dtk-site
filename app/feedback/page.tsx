@@ -18,6 +18,12 @@ export default function FeedbackPage() {
     setMsg(null);
     setErr(null);
     setLoading(true);
+    const digits = phone.replace(/\D/g, "");
+    if (digits.length !== 10) {
+      setErr("Please enter a valid 10-digit phone number.");
+      setLoading(false);
+      return;
+    }
 
     try {
       const res = await fetch("/api/feedback", {
@@ -103,6 +109,9 @@ export default function FeedbackPage() {
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="Phone Number *"
+                type="tel"
+                pattern="^(?:\\D*\\d){10}\\D*$"
+                title="Enter 10 digits (formatting like dashes/spaces is fine)."
               />
 
               <textarea

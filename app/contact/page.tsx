@@ -1,5 +1,12 @@
 import Image from "next/image";
 import QuoteRequestForm from "@/components/QuoteRequestForm";
+import {
+  BUSINESS_ADDRESS,
+  BUSINESS_NAME,
+  SUPPORT_EMAIL,
+  SUPPORT_PHONE_DISPLAY,
+  SUPPORT_PHONE_E164,
+} from "@/lib/business";
 
 const contactImage = "/images/site/contact-hero.jpg";
 
@@ -29,26 +36,26 @@ export default async function ContactPage({
           </div>
 
           <div className="industrial-panel rounded-2xl p-6">
-            <div className="text-lg font-bold text-[var(--steel-900)]">DTK Industrial Components Inc.</div>
+            <div className="text-lg font-bold text-[var(--steel-900)]">{BUSINESS_NAME}</div>
             <div className="mt-3 text-sm text-[var(--muted)]">
-              7-20 Lightbeam Terrace
+              {BUSINESS_ADDRESS.line1}
               <br />
-              Brampton, Ontario, Canada
+              {BUSINESS_ADDRESS.city}, {BUSINESS_ADDRESS.province}, {BUSINESS_ADDRESS.country}
               <br />
-              L6Y 6H9
+              {BUSINESS_ADDRESS.postalCode}
             </div>
 
             <div className="mt-5 space-y-3 text-sm">
               <div>
                 <span className="font-semibold text-[var(--steel-900)]">Phone: </span>
-                <a href="tel:19052680393" className="text-[var(--steel-900)] underline">
-                  (905) 268-0393
+                <a href={`tel:${SUPPORT_PHONE_E164}`} className="text-[var(--steel-900)] underline">
+                  {SUPPORT_PHONE_DISPLAY}
                 </a>
               </div>
               <div>
                 <span className="font-semibold text-[var(--steel-900)]">Email: </span>
-                <a href="mailto:sales@dtkindustrial.com" className="text-[var(--steel-900)] underline">
-                  sales@dtkindustrial.com
+                <a href={`mailto:${SUPPORT_EMAIL}`} className="text-[var(--steel-900)] underline">
+                  {SUPPORT_EMAIL}
                 </a>
               </div>
             </div>
