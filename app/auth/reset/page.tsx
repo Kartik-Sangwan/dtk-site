@@ -1,11 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
 
-export default function ResetPasswordPage() {
+function ResetPasswordPageContent() {
   const router = useRouter();
   const params = useSearchParams();
   const token = useMemo(() => params.get("token") ?? "", [params]);
@@ -61,83 +61,97 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-50">
-      <section className="mx-auto flex min-h-[80vh] max-w-2xl items-center justify-center px-6 py-12">
-        <div className="w-full max-w-md rounded-2xl border border-slate-300 bg-white p-6 shadow-xl md:p-7">
-          <h1 className="text-3xl font-semibold tracking-tight text-slate-800">Reset your password</h1>
-          <p className="mt-2 text-sm text-slate-600">{email || "Missing email"}</p>
+    <section className="mx-auto flex min-h-[80vh] max-w-2xl items-center justify-center px-6 py-12">
+      <div className="w-full max-w-md rounded-2xl border border-slate-300 bg-white p-6 shadow-xl md:p-7">
+        <h1 className="text-3xl font-semibold tracking-tight text-slate-800">Reset your password</h1>
+        <p className="mt-2 text-sm text-slate-600">{email || "Missing email"}</p>
 
-          {error && (
-            <div className="mt-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-              {error}
+        {error && (
+          <div className="mt-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+            {error}
+          </div>
+        )}
+        {success && (
+          <div className="mt-4 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+            {success}
+          </div>
+        )}
+
+        <form onSubmit={onSubmit} className="mt-6 space-y-4">
+          <div>
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-semibold text-slate-800">New Password</label>
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                className="inline-flex h-6 w-6 items-center justify-center rounded text-slate-600 hover:bg-slate-100"
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
             </div>
-          )}
-          {success && (
-            <div className="mt-4 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-              {success}
+            <input
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              type={showPassword ? "text" : "password"}
+              required
+              className="mt-2 h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm outline-none focus:border-slate-500"
+            />
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-semibold text-slate-800">Confirm Password</label>
+              <button
+                type="button"
+                onClick={() => setShowConfirm((v) => !v)}
+                className="inline-flex h-6 w-6 items-center justify-center rounded text-slate-600 hover:bg-slate-100"
+                aria-label={showConfirm ? "Hide password" : "Show password"}
+              >
+                {showConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
             </div>
-          )}
+            <input
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              type={showConfirm ? "text" : "password"}
+              required
+              className="mt-2 h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm outline-none focus:border-slate-500"
+            />
+          </div>
 
-          <form onSubmit={onSubmit} className="mt-6 space-y-4">
-            <div>
-              <div className="flex items-center justify-between">
-                <label className="text-sm font-semibold text-slate-800">New Password</label>
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((v) => !v)}
-                  className="inline-flex h-6 w-6 items-center justify-center rounded text-slate-600 hover:bg-slate-100"
-                  aria-label={showPassword ? "Hide password" : "Show password"}
-                >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
-              <input
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                type={showPassword ? "text" : "password"}
-                required
-                className="mt-2 h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm outline-none focus:border-slate-500"
-              />
-            </div>
-
-            <div>
-              <div className="flex items-center justify-between">
-                <label className="text-sm font-semibold text-slate-800">Confirm Password</label>
-                <button
-                  type="button"
-                  onClick={() => setShowConfirm((v) => !v)}
-                  className="inline-flex h-6 w-6 items-center justify-center rounded text-slate-600 hover:bg-slate-100"
-                  aria-label={showConfirm ? "Hide password" : "Show password"}
-                >
-                  {showConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
-              <input
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                type={showConfirm ? "text" : "password"}
-                required
-                className="mt-2 h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm outline-none focus:border-slate-500"
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={busy}
-              className="h-12 w-full rounded-lg bg-slate-900 text-base font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
-            >
-              {busy ? "Resetting..." : "Reset Password"}
-            </button>
-          </form>
-
-          <Link
-            href="/login?mode=signin"
-            className="mt-5 inline-flex text-sm font-semibold text-indigo-600 hover:underline"
+          <button
+            type="submit"
+            disabled={busy}
+            className="h-12 w-full rounded-lg bg-slate-900 text-base font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
           >
-            Back to sign in
-          </Link>
-        </div>
-      </section>
+            {busy ? "Resetting..." : "Reset Password"}
+          </button>
+        </form>
+
+        <Link
+          href="/login?mode=signin"
+          className="mt-5 inline-flex text-sm font-semibold text-indigo-600 hover:underline"
+        >
+          Back to sign in
+        </Link>
+      </div>
+    </section>
+  );
+}
+
+export default function ResetPasswordPage() {
+  return (
+    <main className="min-h-screen bg-slate-50">
+      <Suspense
+        fallback={
+          <section className="mx-auto flex min-h-[80vh] max-w-2xl items-center justify-center px-6 py-12">
+            <div className="h-[560px] w-full max-w-md rounded-2xl border border-slate-300 bg-white shadow-xl" />
+          </section>
+        }
+      >
+        <ResetPasswordPageContent />
+      </Suspense>
     </main>
   );
 }

@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useSession, signOut } from "next-auth/react";
 import { useEffect, useState, useCallback } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { ShoppingCart } from "lucide-react";
 import { CART_SERVER_EVENT } from "@/lib/cart-client";
 import AuthModal from "@/components/AuthModal";
@@ -63,7 +63,6 @@ export default function Header() {
   const [authModalMode, setAuthModalMode] = useState<"signin" | "signup">("signin");
   const [authModalSyncKey, setAuthModalSyncKey] = useState(0);
   const pathname = usePathname();
-  const searchParams = useSearchParams();
   const router = useRouter();
   const role = (session?.user as { role?: string } | undefined)?.role;
   const isStaff = role === "ADMIN" || role === "OPS" || role === "SALES";
@@ -170,7 +169,10 @@ export default function Header() {
               type="button"
               onClick={() => {
                 if (onLoginPage) {
-                  const email = searchParams.get("email");
+                  const email =
+                    typeof window !== "undefined"
+                      ? new URLSearchParams(window.location.search).get("email")
+                      : null;
                   router.push(
                     email
                       ? `/login?mode=signin&email=${encodeURIComponent(email)}`
