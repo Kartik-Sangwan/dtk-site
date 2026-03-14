@@ -37,37 +37,41 @@ export async function POST(req: Request) {
   const cart = typeof body?.cart === "string" ? body.cart.slice(0, 500) : undefined;
   const shipping = body?.shipping;
   const billing = body?.billing;
+  const shippingObj =
+    shipping && typeof shipping === "object" ? (shipping as Record<string, unknown>) : null;
+  const billingObj =
+    billing && typeof billing === "object" ? (billing as Record<string, unknown>) : null;
 
   const shippingParam: Stripe.PaymentIntentCreateParams.Shipping | undefined =
-    shipping && typeof shipping === "object"
+    shippingObj
       ? {
-          name: typeof shipping?.name === "string" ? shipping.name : undefined,
-          phone: typeof shipping?.phone === "string" ? shipping.phone : undefined,
+          name: typeof shippingObj.name === "string" ? shippingObj.name : undefined,
+          phone: typeof shippingObj.phone === "string" ? shippingObj.phone : undefined,
           address: {
-            line1: typeof shipping?.line1 === "string" ? shipping.line1 : undefined,
-            line2: typeof shipping?.line2 === "string" ? shipping.line2 : undefined,
-            city: typeof shipping?.city === "string" ? shipping.city : undefined,
+            line1: typeof shippingObj.line1 === "string" ? shippingObj.line1 : undefined,
+            line2: typeof shippingObj.line2 === "string" ? shippingObj.line2 : undefined,
+            city: typeof shippingObj.city === "string" ? shippingObj.city : undefined,
             state:
-              typeof shipping?.province === "string"
-                ? shipping.province
-                : typeof shipping?.state === "string"
-                ? shipping.state
+              typeof shippingObj.province === "string"
+                ? shippingObj.province
+                : typeof shippingObj.state === "string"
+                ? shippingObj.state
                 : undefined,
             postal_code:
-              typeof shipping?.postal === "string"
-                ? shipping.postal
-                : typeof shipping?.postal_code === "string"
-                ? shipping.postal_code
+              typeof shippingObj.postal === "string"
+                ? shippingObj.postal
+                : typeof shippingObj.postal_code === "string"
+                ? shippingObj.postal_code
                 : undefined,
-            country: typeof shipping?.country === "string" ? shipping.country : undefined,
+            country: typeof shippingObj.country === "string" ? shippingObj.country : undefined,
           },
         }
       : undefined;
 
   const billingCountry =
-    billing && typeof billing?.country === "string" ? billing.country.toUpperCase() : "";
+    billingObj && typeof billingObj.country === "string" ? billingObj.country.toUpperCase() : "";
   const billingPostal =
-    billing && typeof billing?.postal === "string" ? billing.postal.slice(0, 20) : "";
+    billingObj && typeof billingObj.postal === "string" ? billingObj.postal.slice(0, 20) : "";
 
   const idempotencyKey = req.headers.get("x-idempotency-key") ?? undefined;
 
