@@ -41,32 +41,30 @@ export async function POST(req: Request) {
     shipping && typeof shipping === "object" ? (shipping as Record<string, unknown>) : null;
   const billingObj =
     billing && typeof billing === "object" ? (billing as Record<string, unknown>) : null;
+  let shippingParam: Stripe.PaymentIntentCreateParams.Shipping | undefined;
+  if (shippingObj && typeof shippingObj.name === "string") {
+    const address: Stripe.AddressParam = {};
+    if (typeof shippingObj.line1 === "string") address.line1 = shippingObj.line1;
+    if (typeof shippingObj.line2 === "string") address.line2 = shippingObj.line2;
+    if (typeof shippingObj.city === "string") address.city = shippingObj.city;
+    if (typeof shippingObj.province === "string") {
+      address.state = shippingObj.province;
+    } else if (typeof shippingObj.state === "string") {
+      address.state = shippingObj.state;
+    }
+    if (typeof shippingObj.postal === "string") {
+      address.postal_code = shippingObj.postal;
+    } else if (typeof shippingObj.postal_code === "string") {
+      address.postal_code = shippingObj.postal_code;
+    }
+    if (typeof shippingObj.country === "string") address.country = shippingObj.country;
 
-  const shippingParam: Stripe.PaymentIntentCreateParams.Shipping | undefined =
-    shippingObj
-      ? {
-          name: typeof shippingObj.name === "string" ? shippingObj.name : undefined,
-          phone: typeof shippingObj.phone === "string" ? shippingObj.phone : undefined,
-          address: {
-            line1: typeof shippingObj.line1 === "string" ? shippingObj.line1 : undefined,
-            line2: typeof shippingObj.line2 === "string" ? shippingObj.line2 : undefined,
-            city: typeof shippingObj.city === "string" ? shippingObj.city : undefined,
-            state:
-              typeof shippingObj.province === "string"
-                ? shippingObj.province
-                : typeof shippingObj.state === "string"
-                ? shippingObj.state
-                : undefined,
-            postal_code:
-              typeof shippingObj.postal === "string"
-                ? shippingObj.postal
-                : typeof shippingObj.postal_code === "string"
-                ? shippingObj.postal_code
-                : undefined,
-            country: typeof shippingObj.country === "string" ? shippingObj.country : undefined,
-          },
-        }
-      : undefined;
+    shippingParam = {
+      name: shippingObj.name,
+      ...(typeof shippingObj.phone === "string" ? { phone: shippingObj.phone } : {}),
+      address,
+    };
+  }
 
   const billingCountry =
     billingObj && typeof billingObj.country === "string" ? billingObj.country.toUpperCase() : "";
