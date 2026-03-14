@@ -8,8 +8,6 @@ import { generateVerificationToken, sha256Hex } from "@/lib/auth-security";
 
 export const runtime = "nodejs";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
 function isValidEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
@@ -69,6 +67,7 @@ export async function POST(req: Request) {
     }
 
     if (process.env.RESEND_API_KEY) {
+      const resend = new Resend(process.env.RESEND_API_KEY);
       const origin = new URL(req.url).origin;
       const token = generateVerificationToken();
       const tokenHash = sha256Hex(token);
