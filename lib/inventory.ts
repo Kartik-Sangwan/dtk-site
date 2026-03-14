@@ -12,9 +12,25 @@ export type InventoryRow = {
 
 type InventoryIndex = Map<string, InventoryRow>;
 
-const CSV_PATH =
-  process.env.INVENTORY_CSV_PATH ??
-  path.join(process.cwd(), "data", "inventory.csv");
+async function resolveCsvPath() {
+  if (process.env.INVENTORY_CSV_PATH) return process.env.INVENTORY_CSV_PATH;
+
+  const candidates = [
+    path.join(process.cwd(), "data", "Inventory.csv"),
+    path.join(process.cwd(), "data", "inventory.csv"),
+  ];
+
+  for (const candidate of candidates) {
+    try {
+      await fs.access(candidate);
+      return candidate;
+    } catch {
+      // continue
+    }
+  }
+
+  return candidates[0];
+}
 
 // Minimal CSV parser (handles quoted fields + commas inside quotes)
 function parseCsv(text: string): string[][] {
@@ -147,7 +163,8 @@ export async function readInventory(): Promise<InventoryRow[]> {
   const now = Date.now();
   if (cachedRows && now - cachedAt < CACHE_TTL_MS) return cachedRows;
 
-  const csv = await fs.readFile(CSV_PATH, "utf8");
+  const csvPath = await resolveCsvPath();
+  const csv = await fs.readFile(csvPath, "utf8");
   const grid = parseCsv(csv);
   if (grid.length < 2) return [];
 

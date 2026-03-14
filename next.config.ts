@@ -8,6 +8,9 @@ const nextConfig = {
       },
     ],
   },
+  outputFileTracingIncludes: {
+    "/*": ["./data/Inventory.csv", "./data/inventory.csv"],
+  },
 };
 
 module.exports = nextConfig;
