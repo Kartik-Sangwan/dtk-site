@@ -28,7 +28,7 @@ function isLikelyUrl(value: string) {
   return /^https?:\/\/\S+$/i.test(value);
 }
 
-function fail(message: string) {
+function fail(message: string): never {
   redirect(`/admin/orders?err=${encodeURIComponent(message)}`);
 }
 
@@ -40,8 +40,9 @@ export async function updateOrderStatusAction(formData: FormData) {
   const nextStatusRaw = String(formData.get("status") ?? "");
   const trackingUrlRaw = String(formData.get("trackingUrl") ?? "").trim();
   const trackingUrl = trackingUrlRaw.length ? trackingUrlRaw : null;
-  const nextStatus = parseStatus(nextStatusRaw);
-  if (!orderId || !nextStatus) fail("Invalid order status update payload");
+  const parsedStatus = parseStatus(nextStatusRaw);
+  if (!orderId || !parsedStatus) fail("Invalid order status update payload");
+  const nextStatus: OrderStatus = parsedStatus;
   if (trackingUrl && !isLikelyUrl(trackingUrl)) {
     fail("Tracking link must start with http:// or https://");
   }
