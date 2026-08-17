@@ -1,5 +1,6 @@
 import Image from "next/image";
 import QuoteRequestForm from "@/components/QuoteRequestForm";
+import { siteImages } from "@/lib/site-images";
 import {
   BUSINESS_ADDRESS,
   BUSINESS_NAME,
@@ -7,8 +8,6 @@ import {
   SUPPORT_PHONE_DISPLAY,
   SUPPORT_PHONE_E164,
 } from "@/lib/business";
-
-const contactImage = "/images/site/contact-hero.jpg";
 
 export default async function ContactPage({
   searchParams,
@@ -24,7 +23,12 @@ export default async function ContactPage({
         <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
           <div className="overflow-hidden rounded-2xl border border-slate-300 bg-white">
             <div className="relative h-72 w-full md:h-96">
-              <Image src={contactImage} alt="Industrial workshop and machinery" fill className="object-cover" />
+              <Image
+                src={siteImages.contact.hero}
+                alt="Exterior DTK warehouse building with loading bays and branded facade"
+                fill
+                className="object-cover"
+              />
               <div className="absolute inset-0 bg-slate-900/35" />
               <div className="absolute bottom-0 left-0 p-6">
                 <h1 className="text-4xl font-black text-white">Contact Us</h1>

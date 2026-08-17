@@ -17,7 +17,7 @@ export default function ProductImageCarousel({ images }: { images: string[] }) {
   if (images.length === 0) return null;
 
   return (
-    <div className="relative aspect-[4/3] w-full overflow-hidden rounded-xl bg-white">
+    <div className="relative aspect-[4/3] w-full overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
       {images.map((src, i) => (
         <div
           key={`${src}-${i}`}
@@ -30,7 +30,7 @@ export default function ProductImageCarousel({ images }: { images: string[] }) {
             src={src}
             alt={`Product image ${i + 1}`}
             fill
-            className="object-cover"
+            className="object-contain"
             sizes="(max-width: 768px) 100vw, 520px"
           />
         </div>

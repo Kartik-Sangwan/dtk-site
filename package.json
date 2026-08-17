@@ -7,7 +7,14 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "postinstall": "prisma generate"
+    "db:start": "docker-compose up -d postgres",
+    "db:stop": "docker-compose stop postgres",
+    "db:down": "docker-compose down",
+    "db:logs": "docker-compose logs -f postgres",
+    "db:migrate": "prisma migrate deploy",
+    "postinstall": "prisma generate",
+    "polymarket:paper:live": "tsx scripts/polymarket_live_mm_sim.ts",
+    "stripe:listen": "stripe listen --forward-to http://127.0.0.1:3000/api/stripe/webhook"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.1",

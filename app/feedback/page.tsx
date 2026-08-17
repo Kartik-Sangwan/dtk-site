@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useState } from "react";
+import { siteImages } from "@/lib/site-images";
 
 export default function FeedbackPage() {
   const [name, setName] = useState("");
@@ -56,8 +57,8 @@ export default function FeedbackPage() {
       <section className="relative overflow-hidden border-b border-slate-300 bg-slate-900">
         <div className="absolute inset-0">
           <Image
-            src="/images/site/contact-hero.jpg"
-            alt="Industrial service desk"
+            src={siteImages.feedback.hero}
+            alt="Industrial support team member reviewing customer feedback with hydraulic components"
             fill
             className="object-cover opacity-35"
             sizes="100vw"
@@ -153,8 +154,8 @@ export default function FeedbackPage() {
           <aside className="overflow-hidden rounded-2xl border border-slate-300 bg-white shadow-sm">
             <div className="relative h-56 w-full">
               <Image
-                src="/images/site/proc-2.jpg"
-                alt="Manufacturing process"
+                src={siteImages.feedback.side}
+                alt="DTK-style industrial warehouse for hydraulic components and accessories"
                 fill
                 className="object-cover"
                 sizes="(min-width: 1024px) 33vw, 100vw"
@@ -162,10 +163,13 @@ export default function FeedbackPage() {
             </div>
             <div className="p-6">
               <h2 className="text-lg font-semibold text-gray-900">What to Include</h2>
+              <p className="mt-2 text-sm text-gray-600">
+                A few specific details help us review and respond faster.
+              </p>
               <ul className="mt-3 space-y-2 text-sm text-gray-700">
-                <li>Part number and product family when available.</li>
-                <li>Expected quantity and required timeline.</li>
-                <li>Any issue details with photos or order references.</li>
+                <li>Part number, product family, or drawing reference if you have it.</li>
+                <li>Expected quantity, urgency, and target delivery timing.</li>
+                <li>Issue details, photos, and any order or quote reference numbers.</li>
               </ul>
             </div>
           </aside>

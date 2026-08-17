@@ -52,7 +52,9 @@ export default function CartButton() {
   }, []);
 
   useEffect(() => {
-    refresh();
+    const initialRefresh = window.setTimeout(() => {
+      void refresh();
+    }, 0);
 
     const onCartUpdated = () => refresh();
     const onFocus = () => refresh();
@@ -65,6 +67,7 @@ export default function CartButton() {
     document.addEventListener("visibilitychange", onVis);
 
     return () => {
+      window.clearTimeout(initialRefresh);
       window.removeEventListener(CART_SERVER_EVENT, onCartUpdated as EventListener);
       window.removeEventListener("focus", onFocus);
       document.removeEventListener("visibilitychange", onVis);

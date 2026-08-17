@@ -9,8 +9,6 @@ import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
 function isValidEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
@@ -85,12 +83,14 @@ export async function POST(req: Request) {
       );
     }
 
-    if (!process.env.RESEND_API_KEY) {
+    const resendApiKey = process.env.RESEND_API_KEY;
+    if (!resendApiKey) {
       return NextResponse.json(
         { ok: false, error: "Email service is not configured. Please contact support." },
         { status: 500 }
       );
     }
+    const resend = new Resend(resendApiKey);
 
     const passwordHash = await hashPassword(password);
     const token = generateVerificationToken();

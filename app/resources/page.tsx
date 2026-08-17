@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { siteImages } from "@/lib/site-images";
 
 const guides = [
   {
@@ -12,19 +13,19 @@ const guides = [
     title: "Mounting Selection Guide",
     desc: "Choose mounting styles by load direction, alignment, and movement profile.",
     href: "/resources/mounting-selection",
-    image: "/images/site/res-card-mounting.jpg",
+    image: siteImages.resources.mountingHero,
   },
   {
     title: "Materials and Finishes",
     desc: "Quick rules for choosing cast iron, steel, and protective finish options.",
     href: "/resources/materials-finishes",
-    image: "/images/site/res-card-materials.jpg",
+    image: siteImages.resources.materialsHero,
   },
   {
     title: "Cross-Reference Workflow",
     desc: "A practical method to move from legacy part numbers to DTK equivalents.",
     href: "/resources/cross-reference",
-    image: "/images/site/res-card-cross.jpg",
+    image: "/images/site/generated/hydraulic-cross-reference.png",
   },
 ];
 
@@ -35,8 +36,8 @@ export default function ResourcesPage() {
         <div className="industrial-panel overflow-hidden rounded-2xl">
           <div className="relative h-64 w-full md:h-80">
             <Image
-              src="/images/site/resources-hero.jpg"
-              alt="Industrial manufacturing floor"
+              src="/images/site/generated/resources-industrial-complex-v2.png"
+              alt="Large industrial complex with process towers, tanks, and utility piping"
               fill
               className="object-cover"
             />

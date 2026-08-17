@@ -5,8 +5,6 @@ import { escapeHtml, renderFieldGrid, renderIndustrialEmail } from "@/lib/email-
 
 export const runtime = "nodejs";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
 function isValidEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
@@ -45,12 +43,14 @@ export async function POST(req: Request) {
       );
     }
 
-    if (!process.env.RESEND_API_KEY) {
+    const resendApiKey = process.env.RESEND_API_KEY;
+    if (!resendApiKey) {
       return NextResponse.json(
         { ok: false, error: "Quote email service is not configured." },
         { status: 500 }
       );
     }
+    const resend = new Resend(resendApiKey);
 
     const to = process.env.QUOTE_TO_EMAIL || process.env.FEEDBACK_TO_EMAIL || SALES_EMAIL;
     const from = process.env.AUTH_FROM_EMAIL || DEFAULT_FROM;

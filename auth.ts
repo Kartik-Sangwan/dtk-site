@@ -6,66 +6,81 @@ import { prisma } from "@/lib/prisma";
 import { verifyPassword } from "@/lib/auth-security";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 
-export const { handlers, auth, signIn, signOut } = NextAuth({
-  providers: [
+const authSecret =
+  process.env.AUTH_SECRET ||
+  process.env.NEXTAUTH_SECRET ||
+  (process.env.NODE_ENV !== "production" ? "dtk-local-dev-auth-secret" : undefined);
+
+const providers = [];
+
+if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+  providers.push(
     Google({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-    }),
-    Credentials({
-      name: "Email and Password",
-      credentials: {
-        email: { label: "Email", type: "email" },
-        password: { label: "Password", type: "password" },
-      },
-      async authorize(credentials, req) {
-        const email = String(credentials?.email ?? "").trim().toLowerCase();
-        const password = String(credentials?.password ?? "");
-        if (!email || !password) return null;
+      clientId: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    })
+  );
+}
 
-        const ip = req ? getClientIp(req) : "unknown";
-        const limitByIp = checkRateLimit(`auth:login:ip:${ip}`, {
-          windowMs: 10 * 60 * 1000,
-          max: 20,
-          blockMs: 15 * 60 * 1000,
-        });
-        if (!limitByIp.ok) return null;
+providers.push(
+  Credentials({
+    name: "Email and Password",
+    credentials: {
+      email: { label: "Email", type: "email" },
+      password: { label: "Password", type: "password" },
+    },
+    async authorize(credentials, req) {
+      const email = String(credentials?.email ?? "").trim().toLowerCase();
+      const password = String(credentials?.password ?? "");
+      if (!email || !password) return null;
 
-        const limitByEmail = checkRateLimit(`auth:login:email:${email}`, {
-          windowMs: 10 * 60 * 1000,
-          max: 8,
-          blockMs: 15 * 60 * 1000,
-        });
-        if (!limitByEmail.ok) return null;
+      const ip = req ? getClientIp(req) : "unknown";
+      const limitByIp = checkRateLimit(`auth:login:ip:${ip}`, {
+        windowMs: 10 * 60 * 1000,
+        max: 20,
+        blockMs: 15 * 60 * 1000,
+      });
+      if (!limitByIp.ok) return null;
 
-        const user = await prisma.user.findUnique({
-          where: { email },
-          select: {
-            id: true,
-            email: true,
-            name: true,
-            image: true,
-            role: true,
-            passwordHash: true,
-            emailVerified: true,
-          },
-        });
+      const limitByEmail = checkRateLimit(`auth:login:email:${email}`, {
+        windowMs: 10 * 60 * 1000,
+        max: 8,
+        blockMs: 15 * 60 * 1000,
+      });
+      if (!limitByEmail.ok) return null;
 
-        if (!user?.email || !user.passwordHash || !user.emailVerified) return null;
+      const user = await prisma.user.findUnique({
+        where: { email },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          image: true,
+          role: true,
+          passwordHash: true,
+          emailVerified: true,
+        },
+      });
 
-        const isValid = await verifyPassword(password, user.passwordHash);
-        if (!isValid) return null;
+      if (!user?.email || !user.passwordHash || !user.emailVerified) return null;
 
-        return {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          image: user.image,
-          role: user.role,
-        };
-      },
-    }),
-  ],
+      const isValid = await verifyPassword(password, user.passwordHash);
+      if (!isValid) return null;
+
+      return {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        image: user.image,
+        role: user.role,
+      };
+    },
+  })
+);
+
+export const { handlers, auth, signIn, signOut } = NextAuth({
+  secret: authSecret,
+  providers,
 
   session: { strategy: "jwt" },
 

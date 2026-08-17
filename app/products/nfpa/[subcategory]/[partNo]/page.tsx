@@ -124,12 +124,12 @@ export default async function Page({
 
         <div className="mt-6 grid gap-8 lg:grid-cols-[1.2fr_0.8fr]">
           <div className="rounded-2xl border border-slate-300 bg-white p-5 shadow-sm md:p-6">
-            <div className="relative aspect-[4/3] w-full overflow-hidden rounded-xl border border-slate-200 bg-white">
+            <div className="relative aspect-[4/3] w-full overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
               <Image
                 src={product.images[0]}
                 alt={product.partNo}
                 fill
-                className="object-contain p-6"
+                className="object-contain p-2"
                 priority
               />
             </div>
@@ -139,9 +139,9 @@ export default async function Page({
                 {product.images.map((src, i) => (
                   <div
                     key={`${src}-${i}`}
-                    className="relative h-20 overflow-hidden rounded-lg border border-slate-200 bg-white"
+                    className="relative h-20 overflow-hidden rounded-lg border border-slate-200 bg-slate-50"
                   >
-                    <Image src={src} alt={`${product.partNo} ${i + 1}`} fill className="object-contain p-2" />
+                    <Image src={src} alt={`${product.partNo} ${i + 1}`} fill className="object-contain p-1" />
                   </div>
                 ))}
               </div>

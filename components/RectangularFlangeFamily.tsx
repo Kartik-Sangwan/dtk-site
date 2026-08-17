@@ -3,6 +3,7 @@
 import ProductImageCarousel from "@/components/ProductImageCarousel";
 import { useMemo, useState } from "react";
 import { rectangularFlanges } from "@/lib/rectangularFlange";
+import { getNfpaProductImages, getNfpaSpecsUrl } from "@/lib/catalog";
 
 import Link from "next/link";
 
@@ -37,6 +38,8 @@ export default function RectangularFlangeFamily({ subcategory, priceByPartNo = {
     const norm = (v: string) => v.replace(/\s+/g, "").toLowerCase();
     return baseRows.filter((r) => norm(r.part).includes(norm(s)));
   }, [q, priceByPartNo]);
+  const images = getNfpaProductImages(subcategory);
+  const specsUrl = getNfpaSpecsUrl(subcategory);
 
   return (
     <section className="w-full">
@@ -66,14 +69,12 @@ export default function RectangularFlangeFamily({ subcategory, priceByPartNo = {
 
           {/* shared product image */}
           <div className="rounded-2xl border border-slate-200 bg-white p-4">
-            <ProductImageCarousel
-                images={[1, 2, 3].map((i) => `/images/subcategories/nfpa/${subcategory}-${i}.jpg`)}
-              />
+            <ProductImageCarousel images={images} />
 
             <div className="mt-3 flex items-center justify-between">
               <div className="text-sm font-semibold text-gray-900">Material: Cast iron</div>
               <a
-                href="/specs/rectangular-flange-diagram.png"
+                href={specsUrl}
                 target="_blank"
                 className="text-sm font-semibold text-gray-900 underline decoration-slate-400 hover:decoration-slate-700"
               >

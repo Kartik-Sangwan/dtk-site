@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { siteImages } from "@/lib/site-images";
 
 export default function CrossReferencePage() {
   return (
@@ -8,8 +9,8 @@ export default function CrossReferencePage() {
         <div className="overflow-hidden rounded-2xl border border-slate-300 bg-white">
           <div className="relative h-64 w-full md:h-80">
             <Image
-              src="/images/site/cross-hero.jpg"
-              alt="Engineering drawings and documentation"
+              src={siteImages.resources.crossHero}
+              alt="Engineering drawings and hydraulic replacement parts"
               fill
               className="object-cover"
             />
@@ -39,12 +40,12 @@ export default function CrossReferencePage() {
             [
               "1. Compare Geometry",
               "Confirm form-fit compatibility against drawing callouts.",
-              "/images/site/cross-1.jpg",
+              "/images/site/generated/cross-compare-geometry-v2.png",
             ],
             [
               "2. Check Load Context",
               "Validate pull/compression and side-load considerations.",
-              "/images/site/cross-2.jpg",
+              "/images/site/generated/cross-load-context-v2.png",
             ],
             [
               "3. Confirm Supply Plan",

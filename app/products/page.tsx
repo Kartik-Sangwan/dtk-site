@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { siteImages } from "@/lib/site-images";
 
 const categories = [
   {
@@ -62,7 +63,7 @@ export default function ProductsPage() {
             >
               <div className="relative h-40 w-full">
                 <Image
-                  src={c.href === "/products/nfpa" ? "/images/site/products-cat-nfpa.jpg" : "/images/site/products-cat-iso.jpg"}
+                  src={c.href === "/products/nfpa" ? siteImages.resources.mountingHero : "/images/site/products-cat-iso.jpg"}
                   alt={c.title}
                   fill
                   className="object-cover"

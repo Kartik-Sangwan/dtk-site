@@ -17,7 +17,9 @@ export default function OrderStatusRefresh({
 
   useEffect(() => {
     if (!enabled) return;
-    setSecondsLeft(maxSeconds);
+    const reset = window.setTimeout(() => {
+      setSecondsLeft(maxSeconds);
+    }, 0);
 
     const tick = window.setInterval(() => {
       router.refresh();
@@ -27,6 +29,7 @@ export default function OrderStatusRefresh({
     const stop = window.setTimeout(() => window.clearInterval(tick), maxSeconds * 1000);
 
     return () => {
+      window.clearTimeout(reset);
       window.clearInterval(tick);
       window.clearTimeout(stop);
     };

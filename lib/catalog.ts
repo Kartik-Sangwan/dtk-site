@@ -12,22 +12,56 @@ export type Product = {
   specsUrl?: string;     // optional: link to spec image/pdf
 };
 
-const DEFAULT_IMAGES_BY_SUB: Record<string, string[]> = {
-  "alignment-coupler": ["/products/alignment-coupler.png"],
-  "clevis-brackets": ["/products/clevis-bracket.png"],
-  "eye-brackets": ["/products/eye-bracket.png"],
-  "intermediate-trunnion-mounts": ["/products/clevis-bracket.png"],
-  "mp1-detachable-mount": ["/products/clevis-bracket.png"],
-  "mp2-detachable-mount": ["/products/clevis-bracket.png"],
-  "mp4-detachable-mount": ["/products/clevis-bracket.png"],
-  "pivot-pins-grooves": ["/products/clevis-bracket.png"],
-  "pivot-pins-holes": ["/products/clevis-bracket.png"],
-  "rectangular-flange": ["/products/eye-bracket.png"],
-  "rod-clevis": ["/products/clevis-bracket.png"],
-  "rod-eye": ["/products/eye-bracket.png"],
-  "spherical-clevis-bracket": ["/products/clevis-bracket.png"],
-  "spherical-rod-eye": ["/products/eye-bracket.png"],
+const NFPA_IMAGE_VERSION = "20260817l";
+
+function nfpaImagePaths(slug: string, order: number[] = [1, 2, 3]) {
+  return order.map(
+    (index) =>
+      `/images/subcategories/nfpa/${slug}-${index}.jpg?v=${NFPA_IMAGE_VERSION}`,
+  );
+}
+
+const NFPA_IMAGES_BY_SUB: Record<string, string[]> = {
+  "alignment-coupler": nfpaImagePaths("alignment-coupler"),
+  "clevis-brackets": nfpaImagePaths("clevis-brackets"),
+  "eye-brackets": nfpaImagePaths("eye-brackets"),
+  "intermediate-trunnion-mounts": nfpaImagePaths("intermediate-trunnion-mounts"),
+  "mp1-detachable-mount": nfpaImagePaths("mp1-detachable-mount"),
+  "mp2-detachable-mount": nfpaImagePaths("mp2-detachable-mount"),
+  "mp4-detachable-mount": nfpaImagePaths("mp4-detachable-mount"),
+  "pivot-pins-grooves": nfpaImagePaths("pivot-pins-grooves"),
+  "pivot-pins-holes": nfpaImagePaths("pivot-pins-holes"),
+  "rectangular-flange": nfpaImagePaths("rectangular-flange"),
+  "rod-clevis": nfpaImagePaths("rod-clevis"),
+  "rod-eye": nfpaImagePaths("rod-eye"),
+  "spherical-clevis-bracket": nfpaImagePaths("spherical-clevis-bracket"),
+  "spherical-rod-eye": nfpaImagePaths("spherical-rod-eye"),
 };
+
+const NFPA_SPECS_BY_SUB: Record<string, string> = {
+  "alignment-coupler": "/specs/alignment-coupler-diagram.png",
+  "clevis-brackets": "/specs/clevis-bracket-diagram.png",
+  "eye-brackets": "/specs/eye-bracket-diagram.png",
+  "intermediate-trunnion-mounts": "/specs/intermediate-trunnion-mount-diagram.png",
+  "mp1-detachable-mount": "/specs/mp1-detachable-mount-diagram.png",
+  "mp2-detachable-mount": "/specs/mp2-detachable-mount-diagram.png",
+  "mp4-detachable-mount": "/specs/mp4-detachable-mount-diagram.png",
+  "pivot-pins-grooves": "/specs/pivot-pin-grooves-diagram.png",
+  "pivot-pins-holes": "/specs/pivot-pin-holes-diagram.png",
+  "rectangular-flange": "/specs/rectangular-flange-diagram.png",
+  "rod-clevis": "/specs/rod-clevis-diagram.png",
+  "rod-eye": "/specs/rod-eye-diagram.png",
+  "spherical-clevis-bracket": "/specs/spherical-clevis-bracket-diagram.png",
+  "spherical-rod-eye": "/specs/spherical-rod-eye-diagram.png",
+};
+
+export function getNfpaProductImages(subcategory: string) {
+  return NFPA_IMAGES_BY_SUB[subcategory] ?? nfpaImagePaths("alignment-coupler");
+}
+
+export function getNfpaSpecsUrl(subcategory: string) {
+  return NFPA_SPECS_BY_SUB[subcategory] ?? "/specs/alignment-coupler-diagram.png";
+}
 
 function stablePrice(partNo: string) {
   // deterministic dummy price based on string
@@ -43,7 +77,7 @@ function stableStock(partNo: string) {
 }
 
 export function getDummyProductNfpa(subcategory: string, partNo: string): Product {
-  const images = DEFAULT_IMAGES_BY_SUB[subcategory] ?? ["/products/alignment-coupler.png"];
+  const images = getNfpaProductImages(subcategory);
 
   return {
     id: `nfpa:${subcategory}:${partNo}`,
@@ -56,6 +90,6 @@ export function getDummyProductNfpa(subcategory: string, partNo: string): Produc
     images,
     description:
       "DTK Industrial Components — placeholder product details. Final pricing and live inventory will be enabled once the database and cart checkout are wired.",
-    specsUrl: `/specs/${subcategory}-diagram.png`, // optional convention
+    specsUrl: getNfpaSpecsUrl(subcategory),
   };
 }

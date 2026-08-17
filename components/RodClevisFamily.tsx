@@ -3,6 +3,7 @@
 import ProductImageCarousel from "@/components/ProductImageCarousel";
 import { useMemo, useState } from "react";
 import { rodClevis } from "@/lib/rodClevis";
+import { getNfpaProductImages, getNfpaSpecsUrl } from "@/lib/catalog";
 
 import Link from "next/link";
 
@@ -32,6 +33,8 @@ export default function RodClevisFamily({ subcategory, priceByPartNo = {} }: { s
     if (!s) return baseRows;
     return baseRows.filter((r) => r.part.toLowerCase().includes(s));
   }, [q, priceByPartNo]);
+  const images = getNfpaProductImages(subcategory);
+  const specsUrl = getNfpaSpecsUrl(subcategory);
 
   return (
     <section className="w-full">
@@ -69,16 +72,14 @@ export default function RodClevisFamily({ subcategory, priceByPartNo = {} }: { s
 
           {/* shared product image */}
           <div className="rounded-2xl border border-slate-200 bg-white p-4">
-            <ProductImageCarousel
-                images={[1, 2, 3].map((i) => `/images/subcategories/nfpa/${subcategory}-${i}.jpg`)}
-              />
+            <ProductImageCarousel images={images} />
 
             <div className="mt-3 flex items-center justify-between">
               <div className="text-sm font-semibold text-gray-900">
                 Material: Cast iron / steel forging
               </div>
               <a
-                href="/specs/rod-clevis-diagram.png"
+                href={specsUrl}
                 target="_blank"
                 className="text-sm font-semibold text-gray-900 underline decoration-slate-400 hover:decoration-slate-700"
               >

@@ -128,17 +128,17 @@ export async function POST(req: Request) {
   if (!body || typeof body !== "object" || !("op" in body)) {
     return NextResponse.json({ error: "Invalid body" }, { status: 400 });
   }
-  if (!("partNo" in body) || !String((body as any).partNo ?? "").trim()) {
+  if (!("partNo" in body) || !body.partNo.trim()) {
     return NextResponse.json({ error: "Missing partNo" }, { status: 400 });
   }
 
   const cart = await resolveCart();
-  const partNo = String((body as any).partNo).trim();
+  const partNo = body.partNo.trim();
 
   if (body.op === "remove") {
     await prisma.cartItem.deleteMany({ where: { cartId: cart.id, partNo } });
   } else if (body.op === "set") {
-    const qty = Math.max(0, Math.floor(Number((body as any).qty ?? 0)));
+    const qty = Math.max(0, Math.floor(Number(body.qty ?? 0)));
     if (qty <= 0) {
       await prisma.cartItem.deleteMany({ where: { cartId: cart.id, partNo } });
     } else {
@@ -149,7 +149,7 @@ export async function POST(req: Request) {
       });
     }
   } else if (body.op === "add") {
-    const inc = Math.max(1, Math.floor(Number((body as any).qty ?? 1)));
+    const inc = Math.max(1, Math.floor(Number(body.qty ?? 1)));
     await prisma.cartItem.upsert({
       where: { cartId_partNo: { cartId: cart.id, partNo } },
       create: { cartId: cart.id, partNo, qty: inc },

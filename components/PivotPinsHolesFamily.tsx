@@ -1,6 +1,7 @@
 "use client";
 
 import ProductImageCarousel from "@/components/ProductImageCarousel";
+import { getNfpaProductImages, getNfpaSpecsUrl } from "@/lib/catalog";
 import { useMemo, useState } from "react";
 import { pivotPinsHoles } from "@/lib/pivotPinsHoles";
 
@@ -32,6 +33,8 @@ export default function PivotPinHolesFamily({ subcategory, priceByPartNo = {} }:
     if (!s) return baseRows;
     return baseRows.filter((r) => r.part.toLowerCase().includes(s));
   }, [q, priceByPartNo]);
+  const images = getNfpaProductImages(subcategory);
+  const specsUrl = getNfpaSpecsUrl(subcategory);
 
   return (
     <section className="w-full">
@@ -60,15 +63,13 @@ export default function PivotPinHolesFamily({ subcategory, priceByPartNo = {} }:
           </div>
 
           {/* shared product image */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-4">
-            <ProductImageCarousel
-                images={[1, 2, 3].map((i) => `/images/subcategories/nfpa/${subcategory}-${i}.jpg`)}
-              />
+          <div className="rounded-2xl border border-slate-200 bg-white p-3">
+            <ProductImageCarousel images={images} />
 
             <div className="mt-3 flex items-center justify-between">
               <div className="text-sm font-semibold text-gray-900">Finish: Black oxide</div>
               <a
-                href="/specs/pivot-pin-holes-diagram.png"
+                href={specsUrl}
                 target="_blank"
                 className="text-sm font-semibold text-gray-900 underline decoration-slate-400 hover:decoration-slate-700"
               >

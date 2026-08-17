@@ -60,7 +60,7 @@ export async function POST(req: Request) {
 
   const cart = await ensureCart();
 
-  const partNo = typeof (body as any).partNo === "string" ? (body as any).partNo.trim() : "";
+  const partNo = typeof body.partNo === "string" ? body.partNo.trim() : "";
   if (!partNo) {
     return NextResponse.json({ error: "Missing partNo" }, { status: 400 });
   }

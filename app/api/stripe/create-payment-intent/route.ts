@@ -5,12 +5,12 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || "";
-const stripe = new Stripe(STRIPE_SECRET_KEY);
 
 export async function POST(req: Request) {
   if (!STRIPE_SECRET_KEY) {
     return NextResponse.json({ error: "Missing STRIPE_SECRET_KEY" }, { status: 500 });
   }
+  const stripe = new Stripe(STRIPE_SECRET_KEY);
 
   let body: Record<string, unknown>;
   try {

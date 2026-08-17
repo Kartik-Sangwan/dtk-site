@@ -3,6 +3,7 @@
 
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
+import { siteImages } from "@/lib/site-images";
 
 type InventoryRow = {
   item: string;
@@ -84,8 +85,8 @@ export default function InventoryPage() {
       <section className="relative overflow-hidden border-b border-slate-300 bg-slate-900">
         <div className="absolute inset-0">
           <Image
-            src="/images/site/about-cnc.jpg"
-            alt="CNC machining line"
+            src={siteImages.inventory.hero}
+            alt="Hydraulic accessories organized for inventory availability"
             fill
             className="object-cover opacity-35"
             sizes="100vw"

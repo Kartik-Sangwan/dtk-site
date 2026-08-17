@@ -2,21 +2,44 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## Getting Started
 
-First, run the development server:
+Start Postgres locally:
+
+```bash
+npm run db:start
+npm run db:migrate
+```
+
+Then run the development server:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+
+## Local Env
+
+For a stable local auth session, set `AUTH_SECRET` or `NEXTAUTH_SECRET`.
+
+```bash
+openssl rand -base64 32
+```
+
+For Stripe checkout locally, set these env vars:
+
+```bash
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=...
+STRIPE_SECRET_KEY=...
+STRIPE_WEBHOOK_SECRET=...
+```
+
+Forward Stripe webhooks into the app with:
+
+```bash
+npm run stripe:listen
+```
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 

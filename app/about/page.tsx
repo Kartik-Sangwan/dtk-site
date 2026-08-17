@@ -2,10 +2,10 @@ import Image from "next/image";
 import Link from "next/link";
 
 const images = {
-  hero: "/images/site/about-hero.jpg",
+  hero: "/images/site/generated/about-hero-components.png",
   cnc: "/images/site/about-cnc.jpg",
-  quality: "/images/site/about-quality.jpg",
-  teamwork: "/images/site/about-team.jpg",
+  quality: "/images/site/generated/hydraulic-quality-inspection.png",
+  teamwork: "/images/site/generated/about-support-engineer-v2.png",
 };
 
 export default function AboutPage() {
@@ -14,7 +14,12 @@ export default function AboutPage() {
       <section className="mx-auto max-w-6xl px-6 py-14">
         <div className="industrial-panel overflow-hidden rounded-2xl">
           <div className="relative h-72 w-full md:h-96">
-            <Image src={images.hero} alt="Industrial machining environment" fill className="object-cover" />
+            <Image
+              src={images.hero}
+              alt="Hydraulic cylinder accessories in a modern manufacturing environment"
+              fill
+              className="object-cover"
+            />
             <div className="absolute inset-0 bg-gradient-to-r from-slate-900/80 to-slate-900/30" />
             <div className="absolute bottom-0 left-0 p-7 md:p-10">
               <h1 className="max-w-3xl text-4xl font-black text-white md:text-5xl">

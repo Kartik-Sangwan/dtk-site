@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { siteImages } from "@/lib/site-images";
 
 export default function MountingSelectionPage() {
   return (
@@ -8,8 +9,8 @@ export default function MountingSelectionPage() {
         <div className="overflow-hidden rounded-2xl border border-slate-300 bg-white">
           <div className="relative h-64 w-full md:h-80">
             <Image
-              src="/images/site/mount-hero.jpg"
-              alt="Pneumatic cylinder assembly"
+              src={siteImages.resources.mountingHero}
+              alt="Hydraulic mounting hardware grouped by application"
               fill
               className="object-cover"
             />
@@ -28,12 +29,12 @@ export default function MountingSelectionPage() {
             [
               "Inline Force",
               "Rod eye, rod clevis, and alignment coupler options.",
-              "/images/site/mount-1.jpg",
+              "/images/site/generated/mount-inline-force-v2.png",
             ],
             [
               "Pivotted Motion",
               "Clevis brackets, eye brackets, and pivot pins.",
-              "/images/site/mount-2.jpg",
+              "/images/site/generated/mount-pivotted-motion-v2.png",
             ],
             [
               "Fixed End Mounting",

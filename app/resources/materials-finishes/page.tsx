@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { siteImages } from "@/lib/site-images";
 
 export default function MaterialsFinishesPage() {
   return (
@@ -8,8 +9,8 @@ export default function MaterialsFinishesPage() {
         <div className="overflow-hidden rounded-2xl border border-slate-300 bg-white">
           <div className="relative h-64 w-full md:h-80">
             <Image
-              src="/images/site/mat-hero.jpg"
-              alt="Metal finishing and materials"
+              src={siteImages.resources.materialsHero}
+              alt="Hydraulic hardware with varied materials and protective finishes"
               fill
               className="object-cover"
             />
@@ -28,17 +29,17 @@ export default function MaterialsFinishesPage() {
             [
               "Cast Iron",
               "Good baseline for general industrial duty where cost and rigidity are priorities.",
-              "/images/site/mat-1.jpg",
+              "/images/site/generated/materials-cast-iron-raw-v3.png",
             ],
             [
               "Steel",
               "Preferred for higher shock/vibration and demanding mechanical loading profiles.",
-              "/images/site/mat-2.jpg",
+              "/images/site/generated/materials-steel-bars-v3.png",
             ],
             [
-              "Corrosion-Sensitive Setups",
+              "Corrosion Resistance",
               "Use protective finishing and verify exposure to cleaners, moisture, and salts.",
-              "/images/site/mat-3.jpg",
+              "/images/site/generated/materials-corrosion-coating-v3.png",
             ],
           ].map(([title, desc, img]) => (
             <div key={title} className="rounded-xl border border-slate-300 bg-white p-5">

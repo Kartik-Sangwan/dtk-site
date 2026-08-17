@@ -1,4 +1,6 @@
+import Image from "next/image";
 import Link from "next/link";
+import { getNfpaProductImages } from "@/lib/catalog";
 
 const nfpaSubs = [
   { slug: "alignment-coupler", name: "Alignment Coupler" },
@@ -42,10 +44,22 @@ export default function NfpaPage() {
             <Link
               key={s.slug}
               href={`/products/nfpa/${s.slug}`}
-              className="rounded-xl border border-slate-200/70 bg-white p-5 shadow-sm hover:bg-slate-50"
+              className="group overflow-hidden rounded-2xl border border-slate-200/70 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
             >
-              <div className="font-semibold text-gray-900">{s.name}</div>
-              <div className="mt-1 text-sm text-gray-600">View parts →</div>
+              <div className="relative aspect-[4/3] overflow-hidden border-b border-slate-200 bg-slate-50">
+                <Image
+                  src={getNfpaProductImages(s.slug)[0]}
+                  alt={s.name}
+                  fill
+                  className="object-contain p-1 transition duration-300 group-hover:scale-[1.02]"
+                  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                />
+              </div>
+
+              <div className="p-5">
+                <div className="font-semibold text-gray-900">{s.name}</div>
+                <div className="mt-1 text-sm text-gray-600">View parts and specs →</div>
+              </div>
             </Link>
           ))}
         </div>

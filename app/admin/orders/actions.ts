@@ -22,8 +22,6 @@ function parseStatus(value: string): OrderStatus | null {
   return ALLOWED_STATUSES.find((status) => status === value) ?? null;
 }
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
 function isLikelyUrl(value: string) {
   return /^https?:\/\/\S+$/i.test(value);
 }
@@ -149,6 +147,7 @@ export async function updateOrderStatusAction(formData: FormData) {
     updated.trackingUrl &&
     process.env.RESEND_API_KEY
   ) {
+    const resend = new Resend(process.env.RESEND_API_KEY);
     const orderLabel = updated.publicRef || updated.id;
     const customerName = updated.shipName || "Customer";
     const shippedDate = updated.shippedAt

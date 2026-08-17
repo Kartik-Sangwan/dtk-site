@@ -1,18 +1,19 @@
 import Image from "next/image";
+import { siteImages } from "@/lib/site-images";
 
 const processImages = [
   {
-    src: "/images/site/proc-1.jpg",
+    src: "/images/site/generated/process-machining-setup-v3.png",
     title: "Machining Setup",
     desc: "Fixture setup and tool-path preparation before production runs.",
   },
   {
-    src: "/images/site/proc-2.jpg",
+    src: "/images/site/generated/process-in-process-checks-v2.png",
     title: "In-Process Checks",
     desc: "Operator and inspector verification at defined process checkpoints.",
   },
   {
-    src: "/images/site/proc-3.jpg",
+    src: "/images/site/generated/process-cnc-operations-v2.png",
     title: "CNC Operations",
     desc: "Thread, bore, and profile machining for mount and hardware families.",
   },
@@ -25,8 +26,8 @@ export default function ProcessPage() {
         <div className="overflow-hidden rounded-2xl border border-slate-300 bg-white">
           <div className="relative h-64 w-full md:h-80">
             <Image
-              src="/images/site/proc-hero.jpg"
-              alt="Manufacturing process overview"
+              src={siteImages.resources.processHero}
+              alt="Hydraulic accessory machining process overview"
               fill
               className="object-cover"
             />

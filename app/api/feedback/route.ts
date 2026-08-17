@@ -5,8 +5,6 @@ import { escapeHtml, renderFieldGrid, renderIndustrialEmail } from "@/lib/email-
 
 export const runtime = "nodejs";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
 function isValidEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
@@ -47,6 +45,14 @@ export async function POST(req: Request) {
     }
 
     const to = process.env.FEEDBACK_TO_EMAIL || SALES_EMAIL;
+    const resendApiKey = process.env.RESEND_API_KEY;
+    if (!resendApiKey) {
+      return NextResponse.json(
+        { ok: false, error: "Feedback email service is not configured." },
+        { status: 500 }
+      );
+    }
+    const resend = new Resend(resendApiKey);
 
     // NOTE: Resend requires a verified "from" domain/email.
     // For initial testing, you can use: "onboarding@resend.dev"

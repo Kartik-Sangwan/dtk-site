@@ -19,9 +19,6 @@ const RESEND_API_KEY = process.env.RESEND_API_KEY || "";
 const FROM_EMAIL = process.env.FROM_EMAIL || process.env.AUTH_FROM_EMAIL || DEFAULT_FROM;
 const COMPANY_ORDER_EMAIL = process.env.COMPANY_ORDER_EMAIL || SALES_EMAIL;
 
-const stripe = new Stripe(STRIPE_SECRET_KEY);
-const resend = new Resend(RESEND_API_KEY);
-
 function money(cents: number, currency: string) {
   return new Intl.NumberFormat(undefined, {
     style: "currency",
@@ -109,6 +106,8 @@ export async function POST(req: Request) {
   if (!STRIPE_WEBHOOK_SECRET) {
     return NextResponse.json({ error: "Missing STRIPE_WEBHOOK_SECRET" }, { status: 500 });
   }
+  const stripe = new Stripe(STRIPE_SECRET_KEY);
+  const resend = RESEND_API_KEY ? new Resend(RESEND_API_KEY) : null;
 
   // Stripe signature verification requires raw body
   const sig = req.headers.get("stripe-signature");
@@ -203,7 +202,7 @@ export async function POST(req: Request) {
         console.warn("RESEND_API_KEY missing; skipping email sending");
       } else {
         try {
-          if (customerEmail) {
+          if (customerEmail && resend) {
             await resend.emails.send({
               from: FROM_EMAIL,
               to: [customerEmail],
@@ -217,7 +216,7 @@ export async function POST(req: Request) {
             console.warn("No shipEmail on order; skipping customer email");
           }
 
-          if (companyEmail) {
+          if (companyEmail && resend) {
             await resend.emails.send({
               from: FROM_EMAIL,
               to: [companyEmail],
